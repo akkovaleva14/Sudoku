@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="@dimen/screen_padding">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:text="@string/new_game"
+            android:textColor="@color/text_primary"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/startStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_normal"
+            android:gravity="center"
+            android:text="@string/start_description"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp" />
+
+        <ProgressBar
+            android:id="@+id/startProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="@dimen/spacing_normal"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:labelFor="@id/difficultySpinner"
+            android:text="@string/select_difficulty"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+
+        <Spinner
+            android:id="@+id/difficultySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/digit_height" />
+
+        <Button
+            android:id="@+id/startGameButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_normal"
+            android:minHeight="@dimen/action_height"
+            android:text="@string/start_game"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/continueGameButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/action_height"
+            android:text="@string/continue_game"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/previousResultsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:minHeight="@dimen/action_height"
+            android:text="@string/previous_results"
+            android:textAllCaps="false" />
+
+    </LinearLayout>
+
+</ScrollView>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_padding">12dp</dimen>
+    <dimen name="spacing_small">6dp</dimen>
+    <dimen name="spacing_normal">8dp</dimen>
+    <dimen name="digit_height">48dp</dimen>
+    <dimen name="action_height">52dp</dimen>
+</resources>

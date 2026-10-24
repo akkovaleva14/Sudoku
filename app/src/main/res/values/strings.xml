@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Судоку</string>
+
+    <string name="difficulty_easy">Лёгкая</string>
+    <string name="difficulty_medium">Средняя</string>
+    <string name="difficulty_hard">Сложная</string>
+    <string name="difficulty_expert">Эксперт</string>
+    <string name="difficulty_master">Мастер</string>
+    <string name="difficulty_extreme">Экстрим</string>
+
+    <string name="new_game">Новая игра</string>
+    <string name="select_difficulty">Выберите сложность</string>
+    <string name="start_game">Начать новую игру</string>
+    <string name="continue_game">Продолжить игру</string>
+    <string name="return_to_game">Вернуться к игре</string>
+    <string name="previous_results">Предыдущие результаты</string>
+    <string name="start_description">Выберите сложность и начните игру. Сохранённую партию можно продолжить.</string>
+    <string name="main_menu">Главное меню</string>
+
+    <string name="pause_game">Пауза</string>
+    <string name="resume_game">Продолжить</string>
+    <string name="game_paused">Игра на паузе</string>
+    <string name="pause_description">Таймер остановлен. Нажмите «Продолжить», чтобы вернуться к игре.</string>
+    <string name="status_paused"> · Пауза</string>
+    <string name="status_finding_hint"> · Поиск подсказки</string>
+
+    <string name="restart">Начать заново</string>
+    <string name="hint">Подсказка</string>
+    <string name="place_digit">Поставить число</string>
+    <string name="cancel_hint">Отменить поиск</string>
+    <string name="notes_on">Заметки: вкл.</string>
+    <string name="notes_off">Заметки: выкл.</string>
+    <string name="erase">Очистить</string>
+    <string name="undo">Отменить</string>
+    <string name="close_explanation">Закрыть объяснение</string>
+    <string name="fill_random_cell">Заполнить случайную клетку правильным числом</string>
+    <string name="fill_selected_cell">Заполнить выбранную клетку правильным числом</string>
+
+    <string name="cancel">Отмена</string>
+    <string name="continue_action">Продолжить</string>
+    <string name="confirm_new_game">Создать новую головоломку? После успешной генерации текущая партия будет заменена.</string>
+    <string name="confirm_restart">Удалить введённые числа и заметки? Время и счётчики помощи будут обнулены. Начнётся новая попытка.</string>
+
+    <string name="preparing">Подготовка игры…</string>
+    <string name="generating">Генерация головоломки…</string>
+    <string name="finding_hint">Подбираем подсказку…</string>
+    <string name="start_new_game">Создайте игру в главном меню</string>
+    <string name="create_game">Создайте новую игру</string>
+    <string name="select_cell">Выберите клетку</string>
+    <string name="well_done">Отличная работа! Судоку решено.</string>
+    <string name="given_cannot_change">Исходное число — его нельзя изменить</string>
+    <string name="clear_before_notes">Для заметок сначала очистите клетку</string>
+
+    <string name="enter_digit">Ввести цифру %1$d</string>
+    <string name="cell_position">Строка %1$d, столбец %2$d</string>
+    <string name="board_description">Поле судоку: девять строк и девять столбцов</string>
+    <string name="game_status">%1$s · %2$s · Чисел: %3$d%4$s</string>
+    <string name="status_finished"> · Решено!</string>
+    <string name="status_hint"> · Объяснение подсказки</string>
+
+    <string name="hint_search_info">Ищем простой логический ход.\n\nЕсли его нет, добавим два числа в заметки случайной пустой клетки. Одно из них точно правильное.</string>
+    <string name="game_help">Красным отмечаются неправильные цифры и повторы. Подсказка показывает простой логический ход, а если его нет — записывает два числа в заметки случайной клетки. Одно из них точно правильное.\n\nКнопки автоматического заполнения ставят правильное число в выбранную или случайную пустую клетку. Эти действия учитываются в статистике помощи. Отмена хода не уменьшает счётчик помощи.</string>
+
+    <string name="no_empty_cells">На поле нет пустых клеток.</string>
+    <string name="field_changed">Поле изменилось. Запросите подсказку заново.</string>
+    <string name="random_filled">В случайную пустую клетку поставлено правильное число %1$d.\n\nДействие можно отменить кнопкой «Отменить».</string>
+    <string name="selected_filled">В выбранную клетку поставлено правильное число %1$d.\n\nДействие можно отменить кнопкой «Отменить».</string>
+    <string name="selected_already_correct">В выбранной клетке уже стоит правильное число.</string>
+
+    <string name="error_save">Не удалось сохранить прогресс и результаты</string>
+    <string name="error_load">Не удалось загрузить игру</string>
+    <string name="error_generate">Не удалось создать головоломку</string>
+    <string name="error_hint">Не удалось получить подсказку</string>
+    <string name="error_results">Не удалось загрузить результаты</string>
+
+    <string name="results">Результаты</string>
+    <string name="results_title">История завершённых игр</string>
+    <string name="back_to_game">Назад</string>
+    <string name="results_empty">Пока нет результатов. Завершите игру — она появится здесь.</string>
+    <string name="results_count">Завершено игр: %1$d</string>
+    <string name="result_title">%1$s · %2$s</string>
+    <string name="result_details">Исходных чисел: %1$d\nЛогических подсказок: %2$d\nПомощь двумя заметками: %3$d\nАвтоматических заполнений: %4$d</string>
+    <string name="tracking_notice">Эта партия началась до обновления. Счётчики помощи учитывают только действия после обновления приложения.</string>
+</resources>
