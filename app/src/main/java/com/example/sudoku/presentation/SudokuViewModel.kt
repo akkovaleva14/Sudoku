@@ -11,6 +11,7 @@ import com.example.sudoku.domain.GeneratePuzzleUseCase
 import com.example.sudoku.domain.HintAnalysis
 import com.example.sudoku.domain.HintAnalyzer
 import com.example.sudoku.domain.LogicalHint
+import com.example.sudoku.domain.MistakeMode
 import com.example.sudoku.domain.MoveSnapshot
 import com.example.sudoku.domain.SudokuGame
 import kotlinx.coroutines.CancellationException
@@ -49,7 +50,20 @@ class SudokuViewModel(
     val state: StateFlow<SudokuUiState> =
         mutableState.asStateFlow()
 
-    private val saves = Channel<SudokuGame>(Channel.UNLIMITED)
+    private sealed class SaveCommand {
+        data class Save(
+            val game: SudokuGame
+        ) : SaveCommand()
+
+        data class ClearCurrentGame(
+            val gameId: String
+        ) : SaveCommand()
+    }
+
+    private val saves =
+        Channel<SaveCommand>(Channel.UNLIMITED)
+
+    private var isClearingGame = false
 
     private var generationJob: Job? = null
     private var hintJob: Job? = null
@@ -70,20 +84,77 @@ class SudokuViewModel(
         }
     }
 
-    private fun message(id: Int, vararg args: Any): String =
+    private fun message(
+        id: Int,
+        vararg args: Any
+    ): String =
         text(id, args.toList())
+
+    private fun queueSave(game: SudokuGame) {
+        // После постановки удаления в очередь нельзя
+        // снова поставить сохранение старой партии.
+        if (isClearingGame) return
+
+        saves.trySend(SaveCommand.Save(game))
+    }
 
     private fun startSaveWorker() {
         viewModelScope.launch {
-            for (game in saves) {
-                try {
-                    repository.save(game)
-                } catch (exception: CancellationException) {
-                    throw exception
-                } catch (_: Exception) {
-                    mutableState.value = mutableState.value.copy(
-                        error = message(R.string.error_save)
-                    )
+            for (command in saves) {
+                when (command) {
+                    is SaveCommand.Save -> {
+                        try {
+                            repository.save(command.game)
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (_: Exception) {
+                            mutableState.value =
+                                mutableState.value.copy(
+                                    error = message(
+                                        R.string.error_save
+                                    )
+                                )
+                        }
+                    }
+
+                    is SaveCommand.ClearCurrentGame -> {
+                        try {
+                            // Сначала выполняются все старые
+                            // сохранения, затем удаление.
+                            repository.clearCurrentGame()
+
+                            lastTimestamp = nowMillis()
+
+                            if (
+                                mutableState.value.game?.gameId ==
+                                command.gameId
+                            ) {
+                                mutableState.value = SudokuUiState(
+                                    game = null,
+                                    isBusy = false,
+                                    isPaused = false,
+                                    openGameRequested = false
+                                )
+                            }
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (_: Exception) {
+                            lastTimestamp = nowMillis()
+
+                            // При ошибке партия остаётся
+                            // доступной пользователю.
+                            mutableState.value =
+                                mutableState.value.copy(
+                                    isBusy = false,
+                                    openGameRequested = false,
+                                    error = message(
+                                        R.string.error_finish_current_game
+                                    )
+                                )
+                        } finally {
+                            isClearingGame = false
+                        }
+                    }
                 }
             }
         }
@@ -96,15 +167,16 @@ class SudokuViewModel(
 
                 lastTimestamp = nowMillis()
 
-                // Только загружаем сохранение.
-                // Новую игру создаёт кнопка стартового экрана.
+                // Загружаем сохранение, не создавая новую игру.
                 mutableState.value = SudokuUiState(
                     game = saved,
                     isBusy = false
                 )
 
+                // Репозиторий защищает удалённые результаты
+                // от повторного добавления.
                 if (saved?.result != null) {
-                    saves.trySend(saved)
+                    queueSave(saved)
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -117,8 +189,81 @@ class SudokuViewModel(
         }
     }
 
-    fun newGame(difficulty: Difficulty) {
-        if (mutableState.value.isBusy) return
+    fun finishCurrentGame(expectedGameId: String) {
+        val current = mutableState.value
+        val game = current.game ?: return
+
+        if (
+            current.isBusy ||
+            isClearingGame ||
+            game.isFinished ||
+            game.gameId != expectedGameId
+        ) {
+            return
+        }
+
+        closeHint()
+        updateClock()
+
+        val latest = mutableState.value
+        val latestGame = latest.game ?: return
+
+        if (
+            latestGame.gameId != expectedGameId ||
+            latestGame.isFinished
+        ) {
+            return
+        }
+
+        isClearingGame = true
+
+        mutableState.value = latest.copy(
+            isBusy = true,
+            error = null,
+            hint = null,
+            hintMessage = null,
+            isHintBusy = false,
+            openGameRequested = false
+        )
+
+        val queued = saves.trySend(
+            SaveCommand.ClearCurrentGame(
+                gameId = expectedGameId
+            )
+        )
+
+        if (queued.isFailure) {
+            isClearingGame = false
+            lastTimestamp = nowMillis()
+
+            mutableState.value = mutableState.value.copy(
+                isBusy = false,
+                error = message(
+                    R.string.error_finish_current_game
+                )
+            )
+        }
+    }
+
+    fun newGame(
+        difficulty: Difficulty,
+        mistakeMode: MistakeMode = MistakeMode.UNLIMITED
+    ) {
+        val current = mutableState.value
+        val currentGame = current.game
+
+        if (current.isBusy) return
+
+        // Пока текущая попытка не завершена,
+        // другой режим можно выбрать только при рестарте
+        // или после сброса текущей игры.
+        if (
+            currentGame != null &&
+            !currentGame.isFinished &&
+            currentGame.mistakeMode != mistakeMode
+        ) {
+            return
+        }
 
         closeHint()
         updateClock()
@@ -131,10 +276,14 @@ class SudokuViewModel(
 
         generationJob = viewModelScope.launch {
             try {
-                // До завершения генерации старую партию
-                // не заменяем.
+                // Старую партию заменяем только после
+                // успешного создания головоломки.
                 val puzzle = generatePuzzle(difficulty)
-                val game = SudokuGame(puzzle = puzzle)
+
+                val game = SudokuGame(
+                    puzzle = puzzle,
+                    mistakeMode = mistakeMode
+                )
 
                 lastTimestamp = nowMillis()
 
@@ -145,7 +294,7 @@ class SudokuViewModel(
                     openGameRequested = true
                 )
 
-                saves.trySend(game)
+                queueSave(game)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -173,7 +322,6 @@ class SudokuViewModel(
 
         if (current.isBusy || game.isFinished) return
 
-        // Сначала учитываем время до нажатия кнопки.
         updateClock()
         closeHint()
 
@@ -186,7 +334,7 @@ class SudokuViewModel(
         lastTimestamp = nowMillis()
 
         mutableState.value.game?.let {
-            saves.trySend(it)
+            queueSave(it)
         }
     }
 
@@ -195,7 +343,31 @@ class SudokuViewModel(
     }
 
     fun enterDigit(digit: Int) {
-        change { engine.enterDigit(it, digit) }
+        change { game ->
+            val entered = engine.enterDigit(game, digit)
+            val index = game.selected
+
+            // Считаем только новый неправильный ввод.
+            // Заметки и повторное нажатие на уже стоящую
+            // цифру ошибку не добавляют.
+            val isMistake =
+                !game.isFinished &&
+                        !game.notesMode &&
+                        digit in 1..9 &&
+                        index in 0..80 &&
+                        game.puzzle.givens[index] == 0 &&
+                        entered.values[index] != game.values[index] &&
+                        entered.values[index] == digit &&
+                        digit != game.puzzle.solution[index]
+
+            if (isMistake) {
+                entered.copy(
+                    mistakeCount = game.mistakeCount + 1
+                )
+            } else {
+                entered
+            }
+        }
     }
 
     fun toggleNotes() {
@@ -207,11 +379,31 @@ class SudokuViewModel(
     }
 
     fun undo() {
-        change { engine.undo(it) }
+        change { game ->
+            // Счётчики ошибок и помощи отменой
+            // хода не уменьшаются.
+            engine.undo(game).copy(
+                mistakeCount = game.mistakeCount,
+                mistakesTrackedFromStart =
+                    game.mistakesTrackedFromStart,
+                mistakeMode = game.mistakeMode,
+                help = game.help,
+                result = game.result
+            )
+        }
     }
 
-    fun restart() {
-        change { engine.restart(it) }
+    fun restart(
+        mistakeMode: MistakeMode? = null
+    ) {
+        // Проигранную партию можно только
+        // перезапустить как новую попытку.
+        change(allowLost = true) { game ->
+            engine.restart(
+                game = game,
+                mistakeMode = mistakeMode ?: game.mistakeMode
+            )
+        }
     }
 
     fun hint() {
@@ -252,17 +444,18 @@ class SudokuViewModel(
 
                 if (requestId != hintRequestId) return@launch
 
-                // Анализ мог занять время.
-                // Применяем его к актуальной партии,
-                // не откатывая таймер к началу анализа.
+                // Используем актуальное время партии,
+                // а не время начала анализа.
                 updateClock()
 
                 val latest = mutableState.value
                 val latestGame = latest.game
 
                 if (
+                    latest.isBusy ||
                     latest.isPaused ||
                     latestGame == null ||
+                    latestGame.isFinished ||
                     latestGame.gameId != game.gameId ||
                     latestGame.values != game.values ||
                     latestGame.notes != game.notes
@@ -341,11 +534,12 @@ class SudokuViewModel(
 
         val digit = game.puzzle.solution[target]
 
-        // Не перезаписываем уже правильную цифру:
-        // это не помощь и не новый ход.
+        // Уже правильная цифра не является новой помощью.
         if (game.values[target] == digit) {
             mutableState.value = mutableState.value.copy(
-                hintMessage = message(R.string.selected_already_correct)
+                hintMessage = message(
+                    R.string.selected_already_correct
+                )
             )
             return
         }
@@ -412,13 +606,16 @@ class SudokuViewModel(
 
         return !current.isBusy &&
                 !current.isHintBusy &&
-                !current.isPaused
+                !current.isPaused &&
+                current.game?.isFinished == false
     }
 
     private fun applyNotesHint(
         game: SudokuGame,
         analysis: HintAnalysis.Notes
     ) {
+        if (game.isFinished) return
+
         val target = analysis.targetIndex
         val digits = analysis.digits
 
@@ -479,6 +676,8 @@ class SudokuViewModel(
         game: SudokuGame,
         hint: LogicalHint
     ) {
+        if (game.isFinished) return
+
         val target = hint.targetIndex
 
         if (
@@ -517,6 +716,8 @@ class SudokuViewModel(
         target: Int,
         digit: Int
     ): SudokuGame {
+        if (game.isFinished) return game
+
         val prepared = game.copy(
             selected = target,
             notesMode = false
@@ -563,7 +764,12 @@ class SudokuViewModel(
                 elapsedMillis = updated.elapsedMillis,
                 completedAtMillis = wallClockMillis(),
                 clues = updated.puzzle.givens.count { it != 0 },
-                help = updated.help
+                help = updated.help,
+                mistakeCount = updated.mistakeCount,
+                mistakesTrackedFromStart =
+                    updated.mistakesTrackedFromStart,
+                mistakeMode = updated.mistakeMode,
+                isVictory = updated.isWon
             )
         )
     }
@@ -579,11 +785,16 @@ class SudokuViewModel(
             game = finalGame,
             error = null,
             hint = null,
-            hintMessage = hintMessage,
+
+            // Сообщение о проигрыше не должно
+            // перекрываться объяснением помощи.
+            hintMessage =
+                if (finalGame.isLost) null else hintMessage,
+
             isHintBusy = false
         )
 
-        saves.trySend(finalGame)
+        queueSave(finalGame)
     }
 
     fun closeHint() {
@@ -608,12 +819,15 @@ class SudokuViewModel(
             closeHint()
 
             mutableState.value.game?.let {
-                saves.trySend(it)
+                queueSave(it)
             }
         }
     }
 
-    private fun change(action: (SudokuGame) -> SudokuGame) {
+    private fun change(
+        allowLost: Boolean = false,
+        action: (SudokuGame) -> SudokuGame
+    ) {
         val current = mutableState.value
 
         if (
@@ -623,6 +837,12 @@ class SudokuViewModel(
         ) {
             return
         }
+
+        val initialGame = current.game ?: return
+
+        // После проигрыша блокируем изменения
+        // также на уровне ViewModel.
+        if (initialGame.isLost && !allowLost) return
 
         closeHint()
         updateClock()
@@ -656,7 +876,7 @@ class SudokuViewModel(
 
         if (updated != game) {
             mutableState.value = current.copy(game = updated)
-            saves.trySend(updated)
+            queueSave(updated)
         }
     }
 }

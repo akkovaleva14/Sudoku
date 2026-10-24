@@ -100,6 +100,17 @@ object SudokuRules {
         if (game.elapsedMillis < 0L) return false
         if (game.history.size > 100) return false
 
+        if (game.mistakeCount < 0) return false
+
+        // В ограниченном режиме ошибки должны учитываться
+        // с самого начала попытки.
+        if (
+            game.mistakeMode != MistakeMode.UNLIMITED &&
+            !game.mistakesTrackedFromStart
+        ) {
+            return false
+        }
+
         for (index in 0 until 81) {
             val given = puzzle.givens[index]
 

@@ -14,6 +14,14 @@ enum class Difficulty(
     EXTREME("Экстрим", 22)
 }
 
+enum class MistakeMode(
+    val allowedMistakes: Int?
+) {
+    NO_MISTAKES(0),
+    TWO_MISTAKES(2),
+    UNLIMITED(null)
+}
+
 data class SudokuPuzzle(
     val givens: List<Int>,
     val solution: List<Int>,
@@ -26,12 +34,6 @@ data class MoveSnapshot(
     val selected: Int
 )
 
-/**
- * usedBeforeTracking:
- * партия началась до появления счётчиков.
- * Тогда сохранённые числа отражают только помощь
- * после обновления приложения.
- */
 data class HelpStatistics(
     val logicalHints: Int = 0,
     val notesHints: Int = 0,
@@ -45,7 +47,11 @@ data class GameResult(
     val elapsedMillis: Long,
     val completedAtMillis: Long,
     val clues: Int,
-    val help: HelpStatistics
+    val help: HelpStatistics,
+    val mistakeCount: Int = 0,
+    val mistakesTrackedFromStart: Boolean = true,
+    val mistakeMode: MistakeMode = MistakeMode.UNLIMITED,
+    val isVictory: Boolean = true
 )
 
 data class SudokuGame(
@@ -60,9 +66,26 @@ data class SudokuGame(
     val help: HelpStatistics = HelpStatistics(),
 
     // Первый результат попытки остаётся неизменным,
-    // даже если после завершения игрок отменит ход.
-    val result: GameResult? = null
+    // даже если он удалён из истории.
+    val result: GameResult? = null,
+
+    val mistakeCount: Int = 0,
+    val mistakesTrackedFromStart: Boolean = true,
+
+    // Режим неизменен на протяжении одной попытки.
+    val mistakeMode: MistakeMode = MistakeMode.UNLIMITED
 ) {
+    val isLost: Boolean
+        get() {
+            val limit = mistakeMode.allowedMistakes
+                ?: return false
+
+            return mistakeCount > limit
+        }
+
+    val isWon: Boolean
+        get() = !isLost && values == puzzle.solution
+
     val isFinished: Boolean
-        get() = values == puzzle.solution
+        get() = isLost || isWon
 }

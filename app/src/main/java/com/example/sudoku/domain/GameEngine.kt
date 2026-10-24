@@ -114,6 +114,9 @@ class GameEngine {
     }
 
     fun undo(game: SudokuGame): SudokuGame {
+        // Проигрыш нельзя отменить возвратом хода.
+        if (game.isLost) return game
+
         val snapshot =
             game.history.lastOrNull() ?: return game
 
@@ -125,9 +128,15 @@ class GameEngine {
         )
     }
 
-    fun restart(game: SudokuGame): SudokuGame {
+    fun restart(
+        game: SudokuGame,
+        mistakeMode: MistakeMode = game.mistakeMode
+    ): SudokuGame {
+        // Новая попытка на той же головоломке:
+        // новый gameId, пустая история, обнулённые счётчики.
         return SudokuGame(
-            puzzle = game.puzzle
+            puzzle = game.puzzle,
+            mistakeMode = mistakeMode
         )
     }
 

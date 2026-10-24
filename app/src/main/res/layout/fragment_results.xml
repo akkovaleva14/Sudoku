@@ -43,6 +43,16 @@
         android:textColor="@color/text_secondary"
         android:visibility="gone" />
 
+    <Button
+        android:id="@+id/clearResultsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_normal"
+        android:enabled="false"
+        android:minHeight="@dimen/action_height"
+        android:text="@string/clear_results"
+        android:textAllCaps="false" />
+
     <ListView
         android:id="@+id/resultsList"
         android:layout_width="match_parent"

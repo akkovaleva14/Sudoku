@@ -40,4 +40,14 @@
         android:textSize="12sp"
         android:visibility="gone" />
 
+    <Button
+        android:id="@+id/deleteResultButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:minHeight="@dimen/action_height"
+        android:text="@string/delete_result"
+        android:textAllCaps="false" />
+
 </LinearLayout>

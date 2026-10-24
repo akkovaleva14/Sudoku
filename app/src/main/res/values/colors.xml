@@ -8,6 +8,17 @@
     <color name="text_secondary">#526078</color>
     <color name="accent">#2362BE</color>
 
-    <color name="explanation_background">#FFF0F6</color>
-    <color name="explanation_text">#472C3A</color>
+    <color name="explanation_background">#EDF8EE</color>
+    <color name="explanation_text">#294B32</color>
+
+    <color name="board_selected">#BFE5C5</color>
+    <color name="board_matching">#D8EEDB</color>
+    <color name="board_related">#EDF8EE</color>
+    <color name="board_excluded">#D8EEDB</color>
+    <color name="board_exclusion_mark">#568361</color>
+
+    <color name="digit_completed">#397548</color>
+    <color name="loss_error">#CD303F</color>
+    <color name="loss_cell_background">#FFD6DB</color>
+
 </resources>

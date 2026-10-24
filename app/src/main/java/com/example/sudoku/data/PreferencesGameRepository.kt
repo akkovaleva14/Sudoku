@@ -5,6 +5,7 @@ import com.example.sudoku.domain.Difficulty
 import com.example.sudoku.domain.GameRepository
 import com.example.sudoku.domain.GameResult
 import com.example.sudoku.domain.HelpStatistics
+import com.example.sudoku.domain.MistakeMode
 import com.example.sudoku.domain.MoveSnapshot
 import com.example.sudoku.domain.ResultsRepository
 import com.example.sudoku.domain.SudokuGame
@@ -41,7 +42,6 @@ class PreferencesGameRepository(
                 try {
                     decodeGame(saved)
                 } catch (_: Exception) {
-                    // Повреждённая партия не блокирует запуск.
                     null
                 }
             }
@@ -53,43 +53,91 @@ class PreferencesGameRepository(
                 require(SudokuRules.isValidGame(game))
                 require(game.gameId.isNotBlank())
                 require(validHelp(game.help))
+                require(game.mistakeCount >= 0)
 
+                val deletedIds = readDeletedIds()
                 val results = readResults().toMutableList()
 
                 game.result?.let { result ->
                     require(validResult(result))
                     require(result.gameId == game.gameId)
+                    require(result.mistakeMode == game.mistakeMode)
 
-                    if (results.none { it.gameId == result.gameId }) {
+                    if (
+                        result.gameId !in deletedIds &&
+                        results.none {
+                            it.gameId == result.gameId
+                        }
+                    ) {
                         results.add(result)
                     }
                 }
 
-                val sorted = results.sortedByDescending {
-                    it.completedAtMillis
+                commitState(
+                    results = results,
+                    game = game
+                )
+            }
+        }
+    }
+
+    override suspend fun clearCurrentGame() {
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                // Удаляем только текущую партию.
+                // История результатов остаётся без изменений.
+                check(
+                    preferences.edit()
+                        .remove(GAME_KEY)
+                        .commit()
+                ) {
+                    "Не удалось удалить текущую игру"
+                }
+            }
+        }
+    }
+
+    override suspend fun deleteResult(gameId: String) {
+        require(gameId.isNotBlank())
+
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val deletedIds = readDeletedIds() + gameId
+
+                val results = readResults().filterNot {
+                    it.gameId == gameId
                 }
 
-                val saved = preferences.edit()
-                    .putString(
-                        GAME_KEY,
-                        encodeGame(game).toString()
-                    )
-                    .putString(
-                        RESULTS_KEY,
-                        JSONArray().apply {
-                            sorted.forEach {
-                                put(encodeResult(it))
-                            }
-                        }.toString()
-                    )
-                    .commit()
+                commitState(
+                    results = results,
+                    deletedIds = deletedIds
+                )
+            }
+        }
+    }
 
-                check(saved) {
-                    "Не удалось сохранить игру"
+    override suspend fun clearResults() {
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val results = readResults()
+
+                val deletedIds =
+                    readDeletedIds().toMutableSet()
+
+                results.forEach {
+                    deletedIds.add(it.gameId)
                 }
 
-                // Публикуем только после успешной записи.
-                resultsState.value = sorted
+                // Результат текущей сохранённой партии
+                // тоже нельзя повторно добавить в историю.
+                storedResultGameId()?.let {
+                    deletedIds.add(it)
+                }
+
+                commitState(
+                    results = emptyList(),
+                    deletedIds = deletedIds
+                )
             }
         }
     }
@@ -108,11 +156,76 @@ class PreferencesGameRepository(
             emitAll(resultsState)
         }
 
+    // Вызывать только под mutex.
+    private fun commitState(
+        results: List<GameResult>,
+        game: SudokuGame? = null,
+        deletedIds: Set<String>? = null
+    ) {
+        val sorted = results
+            .distinctBy { it.gameId }
+            .sortedByDescending {
+                it.completedAtMillis
+            }
+
+        val editor = preferences.edit()
+            .putString(
+                RESULTS_KEY,
+                JSONArray().apply {
+                    sorted.forEach {
+                        put(encodeResult(it))
+                    }
+                }.toString()
+            )
+
+        if (game != null) {
+            editor.putString(
+                GAME_KEY,
+                encodeGame(game).toString()
+            )
+        }
+
+        if (deletedIds != null) {
+            editor.putStringSet(
+                DELETED_RESULTS_KEY,
+                deletedIds.toSet()
+            )
+        }
+
+        check(editor.commit()) {
+            "Не удалось сохранить изменения"
+        }
+
+        // Обновляем экран только после успешной записи.
+        resultsState.value = sorted
+    }
+
+    private fun readDeletedIds(): Set<String> =
+        preferences.getStringSet(
+            DELETED_RESULTS_KEY,
+            emptySet()
+        )?.toSet() ?: emptySet()
+
+    private fun storedResultGameId(): String? {
+        val saved =
+            preferences.getString(GAME_KEY, null)
+                ?: return null
+
+        return try {
+            JSONObject(saved)
+                .optJSONObject("result")
+                ?.optString("gameId")
+                ?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun decodeGame(saved: String): SudokuGame {
         val json = JSONObject(saved)
         val version = json.getInt("version")
 
-        require(version == 1 || version == VERSION)
+        require(version in 1..VERSION)
 
         val puzzle = SudokuPuzzle(
             givens = readList(json.getJSONArray("givens")),
@@ -135,27 +248,50 @@ class PreferencesGameRepository(
             )
         }
 
-        // Для старого сохранения ID детерминирован:
-        // повторная загрузка до первой записи не меняет его.
-        val gameId = if (version == 1) {
-            UUID.nameUUIDFromBytes(
-                saved.toByteArray(Charsets.UTF_8)
-            ).toString()
-        } else {
-            json.getString("gameId")
-        }
+        val gameId =
+            if (version == 1) {
+                UUID.nameUUIDFromBytes(
+                    saved.toByteArray(Charsets.UTF_8)
+                ).toString()
+            } else {
+                json.getString("gameId")
+            }
 
-        val help = if (version == 1) {
-            HelpStatistics(usedBeforeTracking = true)
-        } else {
-            decodeHelp(json.getJSONObject("help"))
-        }
+        val help =
+            if (version == 1) {
+                HelpStatistics(usedBeforeTracking = true)
+            } else {
+                decodeHelp(json.getJSONObject("help"))
+            }
 
         val result =
             if (version >= 2 && !json.isNull("result")) {
                 decodeResult(json.getJSONObject("result"))
             } else {
                 null
+            }
+
+        val mistakeCount =
+            if (version >= 3) {
+                json.getInt("mistakeCount")
+            } else {
+                0
+            }
+
+        val mistakesTrackedFromStart =
+            if (version >= 3) {
+                json.getBoolean("mistakesTrackedFromStart")
+            } else {
+                false
+            }
+
+        val mistakeMode =
+            if (version >= 4) {
+                MistakeMode.valueOf(
+                    json.getString("mistakeMode")
+                )
+            } else {
+                MistakeMode.UNLIMITED
             }
 
         val game = SudokuGame(
@@ -168,18 +304,25 @@ class PreferencesGameRepository(
             history = history,
             gameId = gameId,
             help = help,
-            result = result
+            result = result,
+            mistakeCount = mistakeCount,
+            mistakesTrackedFromStart = mistakesTrackedFromStart,
+            mistakeMode = mistakeMode
         )
 
         require(SudokuRules.isValidGame(game))
         require(game.gameId.isNotBlank())
         require(validHelp(game.help))
+        require(game.mistakeCount >= 0)
 
         if (result != null) {
             require(validResult(result))
             require(result.gameId == game.gameId)
             require(result.difficulty == puzzle.difficulty)
-            require(result.clues == puzzle.givens.count { it != 0 })
+            require(result.mistakeMode == game.mistakeMode)
+            require(
+                result.clues == puzzle.givens.count { it != 0 }
+            )
         }
 
         return game
@@ -198,6 +341,14 @@ class PreferencesGameRepository(
             put("notesMode", game.notesMode)
             put("elapsedMillis", game.elapsedMillis)
             put("help", encodeHelp(game.help))
+            put("mistakeMode", game.mistakeMode.name)
+            put("mistakeCount", game.mistakeCount)
+
+            put(
+                "mistakesTrackedFromStart",
+                game.mistakesTrackedFromStart
+            )
+
             put(
                 "result",
                 game.result?.let { encodeResult(it) }
@@ -210,9 +361,18 @@ class PreferencesGameRepository(
                     game.history.forEach { snapshot ->
                         put(
                             JSONObject().apply {
-                                put("values", toJson(snapshot.values))
-                                put("notes", toJson(snapshot.notes))
-                                put("selected", snapshot.selected)
+                                put(
+                                    "values",
+                                    toJson(snapshot.values)
+                                )
+                                put(
+                                    "notes",
+                                    toJson(snapshot.notes)
+                                )
+                                put(
+                                    "selected",
+                                    snapshot.selected
+                                )
                             }
                         )
                     }
@@ -225,18 +385,23 @@ class PreferencesGameRepository(
             preferences.getString(RESULTS_KEY, null)
                 ?: return emptyList()
 
-        // Повреждение истории не затираем молча:
-        // ошибка будет показана экраном или при сохранении.
         val array = JSONArray(saved)
+        val deletedIds = readDeletedIds()
 
         return List(array.length()) { index ->
-            decodeResult(array.getJSONObject(index)).also {
+            decodeResult(
+                array.getJSONObject(index)
+            ).also {
                 require(validResult(it))
             }
-        }.distinctBy { it.gameId }
+        }
+            .distinctBy { it.gameId }
+            .filterNot { it.gameId in deletedIds }
     }
 
-    private fun encodeHelp(help: HelpStatistics): JSONObject =
+    private fun encodeHelp(
+        help: HelpStatistics
+    ): JSONObject =
         JSONObject().apply {
             put("logicalHints", help.logicalHints)
             put("notesHints", help.notesHints)
@@ -244,15 +409,21 @@ class PreferencesGameRepository(
             put("usedBeforeTracking", help.usedBeforeTracking)
         }
 
-    private fun decodeHelp(json: JSONObject): HelpStatistics =
+    private fun decodeHelp(
+        json: JSONObject
+    ): HelpStatistics =
         HelpStatistics(
             logicalHints = json.getInt("logicalHints"),
             notesHints = json.getInt("notesHints"),
             automaticFills = json.getInt("automaticFills"),
-            usedBeforeTracking = json.getBoolean("usedBeforeTracking")
+            usedBeforeTracking = json.getBoolean(
+                "usedBeforeTracking"
+            )
         )
 
-    private fun encodeResult(result: GameResult): JSONObject =
+    private fun encodeResult(
+        result: GameResult
+    ): JSONObject =
         JSONObject().apply {
             put("gameId", result.gameId)
             put("difficulty", result.difficulty.name)
@@ -260,10 +431,25 @@ class PreferencesGameRepository(
             put("completedAtMillis", result.completedAtMillis)
             put("clues", result.clues)
             put("help", encodeHelp(result.help))
+            put("mistakeCount", result.mistakeCount)
+
+            put(
+                "mistakesTrackedFromStart",
+                result.mistakesTrackedFromStart
+            )
+
+            put("mistakeMode", result.mistakeMode.name)
+            put("isVictory", result.isVictory)
         }
 
-    private fun decodeResult(json: JSONObject): GameResult =
-        GameResult(
+    private fun decodeResult(
+        json: JSONObject
+    ): GameResult {
+        val hasMistakeStatistics =
+            json.has("mistakeCount") &&
+                    json.has("mistakesTrackedFromStart")
+
+        return GameResult(
             gameId = json.getString("gameId"),
             difficulty = Difficulty.valueOf(
                 json.getString("difficulty")
@@ -271,20 +457,64 @@ class PreferencesGameRepository(
             elapsedMillis = json.getLong("elapsedMillis"),
             completedAtMillis = json.getLong("completedAtMillis"),
             clues = json.getInt("clues"),
-            help = decodeHelp(json.getJSONObject("help"))
+            help = decodeHelp(json.getJSONObject("help")),
+            mistakeCount =
+                if (hasMistakeStatistics) {
+                    json.getInt("mistakeCount")
+                } else {
+                    0
+                },
+            mistakesTrackedFromStart =
+                if (hasMistakeStatistics) {
+                    json.getBoolean("mistakesTrackedFromStart")
+                } else {
+                    false
+                },
+            mistakeMode = MistakeMode.valueOf(
+                json.optString(
+                    "mistakeMode",
+                    MistakeMode.UNLIMITED.name
+                )
+            ),
+
+            // Старые результаты всегда были победами.
+            isVictory = json.optBoolean("isVictory", true)
         )
+    }
 
     private fun validHelp(help: HelpStatistics): Boolean =
         help.logicalHints >= 0 &&
                 help.notesHints >= 0 &&
                 help.automaticFills >= 0
 
-    private fun validResult(result: GameResult): Boolean =
-        result.gameId.isNotBlank() &&
-                result.elapsedMillis >= 0L &&
-                result.completedAtMillis > 0L &&
-                result.clues in 0..81 &&
-                validHelp(result.help)
+    private fun validResult(result: GameResult): Boolean {
+        if (
+            result.gameId.isBlank() ||
+            result.elapsedMillis < 0L ||
+            result.completedAtMillis <= 0L ||
+            result.clues !in 0..81 ||
+            result.mistakeCount < 0 ||
+            !validHelp(result.help)
+        ) {
+            return false
+        }
+
+        val limit = result.mistakeMode.allowedMistakes
+
+        if (limit != null) {
+            if (!result.mistakesTrackedFromStart) {
+                return false
+            }
+
+            return if (result.isVictory) {
+                result.mistakeCount <= limit
+            } else {
+                result.mistakeCount > limit
+            }
+        }
+
+        return result.isVictory
+    }
 
     private fun toJson(values: List<Int>): JSONArray =
         JSONArray().apply {
@@ -302,6 +532,7 @@ class PreferencesGameRepository(
     private companion object {
         const val GAME_KEY = "sudoku_game"
         const val RESULTS_KEY = "sudoku_results"
-        const val VERSION = 2
+        const val DELETED_RESULTS_KEY = "sudoku_deleted_results"
+        const val VERSION = 4
     }
 }

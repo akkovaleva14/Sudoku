@@ -10,6 +10,8 @@ interface GameRepository {
     suspend fun load(): SudokuGame?
 
     suspend fun save(game: SudokuGame)
+
+    suspend fun clearCurrentGame()
 }
 
 class GeneratePuzzleUseCase(

@@ -40,7 +40,7 @@
     <string name="cancel">Отмена</string>
     <string name="continue_action">Продолжить</string>
     <string name="confirm_new_game">Создать новую головоломку? После успешной генерации текущая партия будет заменена.</string>
-    <string name="confirm_restart">Удалить введённые числа и заметки? Время и счётчики помощи будут обнулены. Начнётся новая попытка.</string>
+    <string name="confirm_restart">Удалить введённые числа и заметки? Время, ошибки и счётчики помощи будут обнулены. Начнётся новая попытка.</string>
 
     <string name="preparing">Подготовка игры…</string>
     <string name="generating">Генерация головоломки…</string>
@@ -82,4 +82,39 @@
     <string name="result_title">%1$s · %2$s</string>
     <string name="result_details">Исходных чисел: %1$d\nЛогических подсказок: %2$d\nПомощь двумя заметками: %3$d\nАвтоматических заполнений: %4$d</string>
     <string name="tracking_notice">Эта партия началась до обновления. Счётчики помощи учитывают только действия после обновления приложения.</string>
+
+    <string name="mistakes_count">Ошибок: %1$d</string>
+    <string name="mistakes_count_since_update">Ошибок после обновления: %1$d</string>
+    <string name="mistakes_not_fully_tracked">Ошибки до обновления не учитывались; после обновления: 0</string>
+    <string name="select_mistake_mode">Режим ошибок</string>
+    <string name="mistake_mode_none">Нельзя ошибаться</string>
+    <string name="mistake_mode_two">Можно ошибиться 2 раза</string>
+    <string name="mistake_mode_unlimited">Можно ошибаться бесконечно</string>
+    <string name="mistake_mode_locked">Режим закреплён за текущей попыткой. Изменить его можно при рестарте или после завершения игры.</string>
+
+    <string name="game_mistake_mode">Режим: %1$s</string>
+    <string name="restart_select_mode">Режим ошибок для новой попытки</string>
+
+    <string name="status_lost"> · Проигрыш</string>
+    <string name="game_lost_description">Лимит ошибок исчерпан. Сыграете заново?</string>
+
+    <string name="result_victory">Победа</string>
+    <string name="result_defeat">Проигрыш</string>
+
+    <string name="delete_result">Удалить результат</string>
+    <string name="delete_action">Удалить</string>
+    <string name="confirm_delete_result">Удалить этот результат из истории? Отменить удаление нельзя. Сохранённая партия останется доступной.</string>
+    <string name="delete_result_description">Удалить результат: %1$s, %2$s</string>
+
+    <string name="clear_results">Очистить историю</string>
+    <string name="confirm_clear_results">Удалить все результаты? Отменить удаление нельзя. Сохранённая партия останется доступной.</string>
+    <string name="error_delete_results">Не удалось удалить результаты</string>
+    <string name="game_status_without_clues">%1$s · %2$s%3$s</string>
+    <string name="mistakes_progress">%1$d/3</string>
+
+    <string name="finish_current_game">Завершить текущую игру</string>
+    <string name="finish_current_game_action">Завершить</string>
+    <string name="confirm_finish_current_game">Завершить текущую игру? Прогресс будет удалён. Эта попытка не будет добавлена в историю результатов.</string>
+    <string name="error_finish_current_game">Не удалось завершить текущую игру. Попробуйте ещё раз.</string>
+
 </resources>

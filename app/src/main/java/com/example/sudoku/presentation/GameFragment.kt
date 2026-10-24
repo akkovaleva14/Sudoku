@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
@@ -16,12 +17,20 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.sudoku.R
 import com.example.sudoku.SudokuApplication
 import com.example.sudoku.databinding.FragmentGameBinding
+import com.example.sudoku.domain.MistakeMode
+import com.example.sudoku.domain.SudokuGame
 import kotlinx.coroutines.launch
 
 class GameFragment : Fragment(R.layout.fragment_game) {
 
     private var binding: FragmentGameBinding? = null
+
     private val digitButtons = mutableListOf<Button>()
+
+    private var fireworksView: VictoryFireworksView? = null
+    private var fireworksHost: ViewGroup? = null
+
+    private var lossAnimation: LossAnimationController? = null
 
     private val viewModel: SudokuViewModel by activityViewModels {
         SudokuViewModelFactory(
@@ -41,12 +50,49 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         configureDigits(ui)
         configureActions(ui)
 
+        lossAnimation = LossAnimationController(ui)
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(
                 Lifecycle.State.STARTED
             ) {
+                // Состояние при открытии экрана не считается
+                // новой победой или новым проигрышем.
+                var previousGame = viewModel.state.value.game
+
                 viewModel.state.collect { state ->
+                    val before = previousGame
+                    val current = state.game
+
+                    val justCompleted =
+                        before != null &&
+                                current != null &&
+                                before.gameId == current.gameId &&
+                                before.result == null &&
+                                current.result != null &&
+                                current.isWon
+
+                    val justLost =
+                        before != null &&
+                                current != null &&
+                                before.gameId == current.gameId &&
+                                !before.isLost &&
+                                current.isLost
+
+                    previousGame = current
+
                     render(ui, state)
+
+                    // Выставляем визуальное состояние проигрыша
+                    // после обычной отрисовки интерфейса.
+                    lossAnimation?.render(
+                        state = state,
+                        animateLoss = justLost
+                    )
+
+                    if (justCompleted) {
+                        showVictoryFireworks(ui)
+                    }
                 }
             }
         }
@@ -63,6 +109,7 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                 textSize = 16f
                 minWidth = 0
                 minimumWidth = 0
+
                 setPadding(0, 0, 0, 0)
 
                 contentDescription = getString(
@@ -90,7 +137,11 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         ui.sudokuBoard.onCellSelected = viewModel::select
 
         ui.menuButton.setOnClickListener {
+            clearVictoryFireworks()
+            lossAnimation?.finishImmediately()
+
             viewModel.setForeground(false)
+
             (requireActivity() as MainActivity).openStart()
         }
 
@@ -99,12 +150,7 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         }
 
         ui.restartButton.setOnClickListener {
-            confirm(
-                R.string.restart,
-                R.string.confirm_restart
-            ) {
-                viewModel.restart()
-            }
+            showRestartDialog()
         }
 
         ui.notesButton.setOnClickListener {
@@ -136,11 +182,80 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         }
     }
 
+    private fun showRestartDialog() {
+        val current = viewModel.state.value
+        val game = current.game ?: return
+
+        if (
+            current.isBusy ||
+            current.isHintBusy ||
+            current.isPaused
+        ) {
+            return
+        }
+
+        val modes = MistakeMode.entries
+        val attemptId = game.gameId
+
+        var selectedPosition =
+            modes.indexOf(game.mistakeMode)
+
+        val labels = modes.map {
+            requireContext().mistakeModeName(it)
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.restart_select_mode)
+            .setSingleChoiceItems(
+                labels,
+                selectedPosition
+            ) { _, position ->
+                selectedPosition = position
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(
+                R.string.continue_action
+            ) { _, _ ->
+                val selectedMode = modes[selectedPosition]
+
+                if (
+                    binding == null ||
+                    viewModel.state.value.game?.gameId != attemptId
+                ) {
+                    return@setPositiveButton
+                }
+
+                confirm(
+                    R.string.restart,
+                    R.string.confirm_restart
+                ) {
+                    if (
+                        binding != null &&
+                        viewModel.state.value.game?.gameId == attemptId
+                    ) {
+                        clearVictoryFireworks()
+                        lossAnimation?.finishImmediately()
+
+                        viewModel.restart(selectedMode)
+                    }
+                }
+            }
+            .show()
+    }
+
     private fun render(
         ui: FragmentGameBinding,
         state: SudokuUiState
     ) {
         val game = state.game
+
+        if (
+            state.isBusy ||
+            state.isPaused ||
+            game?.isWon != true
+        ) {
+            clearVictoryFireworks()
+        }
 
         val ready =
             !state.isBusy &&
@@ -156,8 +271,8 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         ui.menuButton.isEnabled = !state.isBusy
 
-        // Паузу можно включить и во время поиска подсказки:
-        // ViewModel отменит анализ.
+        // Во время анализа подсказки пауза доступна.
+        // ViewModel отменит поиск.
         ui.pauseButton.isEnabled =
             !state.isBusy &&
                     game != null &&
@@ -179,8 +294,14 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             }
 
         ui.pauseOverlay.isVisible = state.isPaused
-        ui.sudokuBoard.isEnabled = ready
 
+        // После проигрыша поле остаётся видимым,
+        // но больше не принимает нажатия.
+        ui.sudokuBoard.isEnabled =
+            ready && game?.isLost == false
+
+        // Меню и рестарт не блокируются
+        // проигрышной анимацией.
         ui.restartButton.isEnabled = ready
         ui.notesButton.isEnabled = unfinished
 
@@ -207,13 +328,19 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         ui.closeHintButton.isVisible =
             ready &&
+                    game?.isLost == false &&
                     (
                             state.hint != null ||
                                     state.hintMessage != null
                             )
 
+        // Победный ход по-прежнему можно отменить.
+        // Проигрыш отменять нельзя.
         ui.undoButton.isEnabled =
-            ready && game?.history?.isNotEmpty() == true
+            ready &&
+                    game != null &&
+                    !game.isLost &&
+                    game.history.isNotEmpty()
 
         val editable =
             unfinished &&
@@ -229,9 +356,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                                     game.values[game.selected] == 0
                             )
 
-        digitButtons.forEach {
-            it.isEnabled = canEnter
-        }
+        renderDigitButtons(
+            game = game,
+            canEnter = canEnter
+        )
 
         ui.eraseButton.isEnabled =
             editable &&
@@ -278,6 +406,14 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         }
 
         renderExplanation(ui, state)
+        renderStatus(ui, state)
+    }
+
+    private fun renderStatus(
+        ui: FragmentGameBinding,
+        state: SudokuUiState
+    ) {
+        val game = state.game
 
         ui.statusText.text = when {
             state.isBusy ->
@@ -294,7 +430,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                     state.isPaused ->
                         getString(R.string.status_paused)
 
-                    game.isFinished ->
+                    game.isLost ->
+                        getString(R.string.status_lost)
+
+                    game.isWon ->
                         getString(R.string.status_finished)
 
                     state.isHintBusy ->
@@ -306,16 +445,120 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                     else -> ""
                 }
 
-                getString(
-                    R.string.game_status,
+                // Количество исходных чисел здесь
+                // больше не отображается.
+                val gameStatus = getString(
+                    R.string.game_status_without_clues,
                     requireContext().difficultyName(
                         game.puzzle.difficulty
                     ),
                     formatGameTime(game.elapsedMillis),
-                    game.puzzle.givens.count { it != 0 },
                     suffix
                 )
+
+                if (game.mistakeMode == MistakeMode.TWO_MISTAKES) {
+                    // Счётчик 0/3, 1/3, 2/3, 3/3
+                    // отображает LossAnimationController
+                    // в отдельном TextView той же строки.
+                    gameStatus
+                } else {
+                    val mistakeStatus = getString(
+                        if (game.mistakesTrackedFromStart) {
+                            R.string.mistakes_count
+                        } else {
+                            R.string.mistakes_count_since_update
+                        },
+                        game.mistakeCount
+                    )
+
+                    val modeStatus = getString(
+                        R.string.game_mistake_mode,
+                        requireContext().mistakeModeName(
+                            game.mistakeMode
+                        )
+                    )
+
+                    "$gameStatus · $mistakeStatus · $modeStatus"
+                }
             }
+        }
+    }
+
+    private fun renderDigitButtons(
+        game: SudokuGame?,
+        canEnter: Boolean
+    ) {
+        val completedColor = ContextCompat.getColor(
+            requireContext(),
+            R.color.digit_completed
+        )
+
+        val normalColor = ContextCompat.getColor(
+            requireContext(),
+            R.color.text_primary
+        )
+
+        val disabledColor = ContextCompat.getColor(
+            requireContext(),
+            R.color.text_secondary
+        )
+
+        digitButtons.forEachIndexed { index, button ->
+            val digit = index + 1
+
+            val completed =
+                if (game == null) {
+                    false
+                } else {
+                    // Галочка появляется только при
+                    // девяти правильных экземплярах цифры.
+                    val correctCount =
+                        game.values.indices.count { cell ->
+                            game.values[cell] == digit &&
+                                    game.puzzle.solution[cell] == digit
+                        }
+
+                    val totalCount =
+                        game.values.count { it == digit }
+
+                    correctCount == 9 && totalCount == 9
+                }
+
+            button.text =
+                if (completed) {
+                    "✓"
+                } else {
+                    digit.toString()
+                }
+
+            button.textSize =
+                if (completed) {
+                    22f
+                } else {
+                    16f
+                }
+
+            button.isEnabled = canEnter && !completed
+
+            button.setTextColor(
+                when {
+                    completed -> completedColor
+                    button.isEnabled -> normalColor
+                    else -> disabledColor
+                }
+            )
+
+            val digitDescription = getString(
+                R.string.enter_digit,
+                digit
+            )
+
+            button.contentDescription =
+                if (completed) {
+                    "$digitDescription. ✓. 9/9"
+                } else {
+                    digitDescription
+                }
         }
     }
 
@@ -328,6 +571,8 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         val explanation = when {
             state.isPaused -> null
             state.isBusy -> null
+            game?.isLost == true -> null
+
             state.isHintBusy ->
                 getString(R.string.hint_search_info)
 
@@ -377,10 +622,17 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         ui.selectionText.setTextColor(
             ContextCompat.getColor(
                 requireContext(),
-                if (showingExplanation) {
-                    R.color.explanation_text
-                } else {
-                    R.color.text_secondary
+                when {
+                    game?.isLost == true &&
+                            !state.isBusy &&
+                            !state.isPaused ->
+                        R.color.loss_error
+
+                    showingExplanation ->
+                        R.color.explanation_text
+
+                    else ->
+                        R.color.text_secondary
                 }
             )
         )
@@ -395,7 +647,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             game == null ->
                 getString(R.string.create_game)
 
-            game.isFinished ->
+            game.isLost ->
+                getString(R.string.game_lost_description)
+
+            game.isWon ->
                 getString(R.string.well_done)
 
             game.selected !in 0..80 ->
@@ -417,6 +672,88 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         }
     }
 
+    private fun showVictoryFireworks(
+        ui: FragmentGameBinding
+    ) {
+        val host = ui.root as? ViewGroup ?: return
+
+        val completedGameId =
+            viewModel.state.value.game?.gameId ?: return
+
+        host.post {
+            // Не обращаемся к уничтоженной
+            // или заменённой разметке.
+            if (binding !== ui) {
+                return@post
+            }
+
+            if (
+                !viewLifecycleOwner.lifecycle.currentState
+                    .isAtLeast(Lifecycle.State.STARTED)
+            ) {
+                return@post
+            }
+
+            val state = viewModel.state.value
+            val game = state.game
+
+            if (
+                state.isBusy ||
+                state.isPaused ||
+                game == null ||
+                game.gameId != completedGameId ||
+                !game.isWon ||
+                game.result == null ||
+                !host.isAttachedToWindow ||
+                host.width <= 0 ||
+                host.height <= 0
+            ) {
+                return@post
+            }
+
+            clearVictoryFireworks()
+
+            val fireworks = VictoryFireworksView(
+                requireContext()
+            )
+
+            // Overlay не выполняет обычную раскладку.
+            fireworks.layout(
+                0,
+                0,
+                host.width,
+                host.height
+            )
+
+            fireworksHost = host
+            fireworksView = fireworks
+
+            // Салют не занимает место в разметке
+            // и не перехватывает нажатия.
+            host.overlay.add(fireworks)
+
+            fireworks.start {
+                if (fireworksView === fireworks) {
+                    clearVictoryFireworks()
+                }
+            }
+        }
+    }
+
+    private fun clearVictoryFireworks() {
+        val fireworks = fireworksView
+        val host = fireworksHost
+
+        fireworksView = null
+        fireworksHost = null
+
+        fireworks?.stop()
+
+        if (fireworks != null && host != null) {
+            host.overlay.remove(fireworks)
+        }
+    }
+
     private fun confirm(
         title: Int,
         message: Int,
@@ -426,7 +763,9 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             .setTitle(title)
             .setMessage(message)
             .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.continue_action) { _, _ ->
+            .setPositiveButton(
+                R.string.continue_action
+            ) { _, _ ->
                 action()
             }
             .show()
@@ -438,14 +777,25 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     }
 
     override fun onPause() {
+        clearVictoryFireworks()
+        lossAnimation?.finishImmediately()
+
         viewModel.setForeground(false)
+
         super.onPause()
     }
 
     override fun onDestroyView() {
+        clearVictoryFireworks()
+
+        lossAnimation?.dispose()
+        lossAnimation = null
+
         binding?.sudokuBoard?.onCellSelected = null
+
         digitButtons.clear()
         binding = null
+
         super.onDestroyView()
     }
 }

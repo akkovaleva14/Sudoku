@@ -47,12 +47,38 @@
             android:labelFor="@id/difficultySpinner"
             android:text="@string/select_difficulty"
             android:textColor="@color/text_primary"
+            android:textStyle="bold"
             android:textSize="16sp" />
 
         <Spinner
             android:id="@+id/difficultySpinner"
             android:layout_width="match_parent"
             android:layout_height="@dimen/digit_height" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_normal"
+            android:labelFor="@id/mistakeModeSpinner"
+            android:text="@string/select_mistake_mode"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <Spinner
+            android:id="@+id/mistakeModeSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/digit_height" />
+
+        <TextView
+            android:id="@+id/mistakeModeNotice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="@string/mistake_mode_locked"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/startGameButton"
@@ -70,6 +96,17 @@
             android:minHeight="@dimen/action_height"
             android:text="@string/continue_game"
             android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/finishCurrentGameButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:minHeight="@dimen/action_height"
+            android:text="@string/finish_current_game"
+            android:textAllCaps="false"
+            android:textColor="@color/loss_error"
             android:visibility="gone" />
 
         <Button

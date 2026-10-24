@@ -7,6 +7,8 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.ContextCompat
+import com.example.sudoku.R
 import com.example.sudoku.domain.LogicalHint
 import com.example.sudoku.domain.ProofStep
 import com.example.sudoku.domain.SudokuRules
@@ -18,7 +20,38 @@ class SudokuBoardView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     private val density = resources.displayMetrics.density
+
+    private val selectedColor = ContextCompat.getColor(
+        context,
+        R.color.board_selected
+    )
+
+    private val matchingColor = ContextCompat.getColor(
+        context,
+        R.color.board_matching
+    )
+
+    private val relatedColor = ContextCompat.getColor(
+        context,
+        R.color.board_related
+    )
+
+    private val excludedColor = ContextCompat.getColor(
+        context,
+        R.color.board_excluded
+    )
+
+    private val exclusionMarkColor = ContextCompat.getColor(
+        context,
+        R.color.board_exclusion_mark
+    )
+
+    private val lossCellColor = ContextCompat.getColor(
+        context,
+        R.color.loss_cell_background
+    )
 
     private var givens: List<Int> = List(81) { 0 }
     private var values: List<Int> = List(81) { 0 }
@@ -26,10 +59,16 @@ class SudokuBoardView @JvmOverloads constructor(
     private var solution: List<Int> = List(81) { 0 }
 
     private var selected = -1
+
     private var errorCells: Set<Int> = emptySet()
 
     private var hint: LogicalHint? = null
     private var proofStep: ProofStep? = null
+
+    private var lossCellIndex = -1
+    private var lossFlash = 0f
+    private var lossOffsetDp = 0f
+    private var lossDim = 0f
 
     var onCellSelected: ((Int) -> Unit)? = null
 
@@ -98,19 +137,59 @@ class SudokuBoardView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setLossVisuals(
+        cellIndex: Int,
+        flash: Float,
+        offsetDp: Float,
+        dim: Float
+    ) {
+        val safeIndex =
+            cellIndex.takeIf { it in 0..80 } ?: -1
+
+        val safeFlash = flash.coerceIn(0f, 1f)
+        val safeDim = dim.coerceIn(0f, 1f)
+
+        if (
+            lossCellIndex == safeIndex &&
+            lossFlash == safeFlash &&
+            lossOffsetDp == offsetDp &&
+            lossDim == safeDim
+        ) {
+            return
+        }
+
+        lossCellIndex = safeIndex
+        lossFlash = safeFlash
+        lossOffsetDp = offsetDp
+        lossDim = safeDim
+
+        invalidate()
+    }
+
+    fun clearLossVisuals() {
+        setLossVisuals(
+            cellIndex = -1,
+            flash = 0f,
+            offsetDp = 0f,
+            dim = 0f
+        )
+    }
+
     override fun onMeasure(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int
     ) {
         val desiredSize = (360 * density).toInt()
 
-        // Соблюдаем ограничения родительского контейнера.
-        // Рисование использует меньшую сторону.
-        val measuredWidth =
-            resolveSize(desiredSize, widthMeasureSpec)
+        val measuredWidth = resolveSize(
+            desiredSize,
+            widthMeasureSpec
+        )
 
-        val measuredHeight =
-            resolveSize(measuredWidth, heightMeasureSpec)
+        val measuredHeight = resolveSize(
+            measuredWidth,
+            heightMeasureSpec
+        )
 
         setMeasuredDimension(
             measuredWidth,
@@ -128,6 +207,7 @@ class SudokuBoardView @JvmOverloads constructor(
 
         val activeHint = hint
         val activeStep = proofStep
+
         val displayedValues = activeStep?.values ?: values
 
         val selectedValue =
@@ -138,7 +218,9 @@ class SudokuBoardView @JvmOverloads constructor(
             }
 
         paint.style = Paint.Style.FILL
+        paint.alpha = 255
 
+        // Фоны клеток и подсветка подсказок.
         for (index in 0 until 81) {
             val row = index / 9
             val col = index % 9
@@ -159,7 +241,7 @@ class SudokuBoardView @JvmOverloads constructor(
                             Color.rgb(173, 216, 255)
 
                         index in activeStep.highlightedCells ->
-                            Color.rgb(255, 235, 242)
+                            relatedColor
 
                         index in activeStep.derivedCells ->
                             Color.rgb(232, 220, 255)
@@ -178,10 +260,10 @@ class SudokuBoardView @JvmOverloads constructor(
                             Color.rgb(173, 216, 255)
 
                         index in activeHint.excludedCells ->
-                            Color.rgb(255, 214, 228)
+                            excludedColor
 
                         index in activeHint.highlightedCells ->
-                            Color.rgb(255, 235, 242)
+                            relatedColor
 
                         else ->
                             Color.WHITE
@@ -191,15 +273,15 @@ class SudokuBoardView @JvmOverloads constructor(
                 else -> {
                     when {
                         index == selected ->
-                            Color.rgb(255, 182, 205)
+                            selectedColor
 
                         selectedValue != 0 &&
                                 displayedValues[index] == selectedValue ->
-                            Color.rgb(255, 214, 228)
+                            matchingColor
 
                         selected in 0..80 &&
                                 SudokuRules.arePeers(index, selected) ->
-                            Color.rgb(255, 235, 242)
+                            relatedColor
 
                         else ->
                             Color.WHITE
@@ -216,6 +298,48 @@ class SudokuBoardView @JvmOverloads constructor(
             )
         }
 
+        // Подсветка последней ошибочной клетки.
+        // Сетка и соседние клетки не смещаются.
+        if (lossCellIndex in 0..80 && lossFlash > 0f) {
+            val row = lossCellIndex / 9
+            val col = lossCellIndex % 9
+
+            val left = col * cellSize
+            val top = row * cellSize
+            val right = left + cellSize
+            val bottom = top + cellSize
+
+            val savedCanvas = canvas.save()
+
+            canvas.clipRect(
+                left,
+                top,
+                right,
+                bottom
+            )
+
+            canvas.translate(
+                lossOffsetDp * density,
+                0f
+            )
+
+            paint.style = Paint.Style.FILL
+            paint.color = lossCellColor
+            paint.alpha = (lossFlash * 255f).toInt()
+
+            canvas.drawRect(
+                left,
+                top,
+                right,
+                bottom,
+                paint
+            )
+
+            paint.alpha = 255
+            canvas.restoreToCount(savedCanvas)
+        }
+
+        // Цифры, заметки и отметки исключений.
         for (index in 0 until 81) {
             val row = index / 9
             val col = index % 9
@@ -269,6 +393,7 @@ class SudokuBoardView @JvmOverloads constructor(
                         index in activeStep.derivedCells
 
             paint.style = Paint.Style.FILL
+            paint.alpha = 255
             paint.textSize = cellSize * 0.58f
             paint.textAlign = Paint.Align.CENTER
 
@@ -304,15 +429,47 @@ class SudokuBoardView @JvmOverloads constructor(
             val baseline =
                 centerY - (paint.ascent() + paint.descent()) / 2f
 
-            canvas.drawText(
-                value.toString(),
-                centerX,
-                baseline,
-                paint
-            )
+            if (
+                index == lossCellIndex &&
+                lossOffsetDp != 0f
+            ) {
+                val savedCanvas = canvas.save()
+
+                // Ошибочная цифра покачивается только
+                // внутри границ своей клетки.
+                canvas.clipRect(
+                    col * cellSize,
+                    row * cellSize,
+                    (col + 1) * cellSize,
+                    (row + 1) * cellSize
+                )
+
+                canvas.translate(
+                    lossOffsetDp * density,
+                    0f
+                )
+
+                canvas.drawText(
+                    value.toString(),
+                    centerX,
+                    baseline,
+                    paint
+                )
+
+                canvas.restoreToCount(savedCanvas)
+            } else {
+                canvas.drawText(
+                    value.toString(),
+                    centerX,
+                    baseline,
+                    paint
+                )
+            }
         }
 
+        // Сетка всегда остаётся неподвижной.
         paint.style = Paint.Style.FILL
+        paint.alpha = 255
         paint.isFakeBoldText = false
         paint.color = Color.rgb(62, 75, 96)
 
@@ -352,6 +509,7 @@ class SudokuBoardView @JvmOverloads constructor(
             )
         }
 
+        // Рамка целевой клетки подсказки.
         if (activeHint != null) {
             val row = activeHint.targetIndex / 9
             val col = activeHint.targetIndex % 9
@@ -359,6 +517,7 @@ class SudokuBoardView @JvmOverloads constructor(
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2f * density
             paint.color = Color.rgb(218, 139, 0)
+            paint.alpha = 255
 
             val inset = paint.strokeWidth / 2f
 
@@ -372,6 +531,26 @@ class SudokuBoardView @JvmOverloads constructor(
 
             paint.style = Paint.Style.FILL
         }
+
+        // Приглушение после проигрыша.
+        // Даже в конечном состоянии цифры читаемы.
+        if (lossDim > 0f) {
+            paint.style = Paint.Style.FILL
+            paint.color = Color.BLACK
+            paint.alpha = (lossDim * 255f).toInt()
+
+            canvas.drawRect(
+                0f,
+                0f,
+                boardSize,
+                boardSize,
+                paint
+            )
+        }
+
+        paint.alpha = 255
+        paint.style = Paint.Style.FILL
+        paint.isFakeBoldText = false
     }
 
     private fun drawExclusion(
@@ -384,7 +563,9 @@ class SudokuBoardView @JvmOverloads constructor(
         val centerY = (row + 0.5f) * cellSize
         val radius = cellSize * 0.12f
 
-        paint.color = Color.rgb(180, 105, 130)
+        paint.style = Paint.Style.FILL
+        paint.alpha = 255
+        paint.color = exclusionMarkColor
         paint.strokeWidth = 1.8f * density
 
         canvas.drawLine(
@@ -412,6 +593,7 @@ class SudokuBoardView @JvmOverloads constructor(
         mask: Int
     ) {
         paint.style = Paint.Style.FILL
+        paint.alpha = 255
         paint.color = Color.rgb(104, 117, 138)
         paint.textSize = cellSize * 0.23f
         paint.textAlign = Paint.Align.CENTER
@@ -445,9 +627,7 @@ class SudokuBoardView @JvmOverloads constructor(
         }
     }
 
-    override fun onTouchEvent(
-        event: MotionEvent
-    ): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isEnabled) return false
 
         when (event.actionMasked) {
@@ -467,10 +647,14 @@ class SudokuBoardView @JvmOverloads constructor(
                     val cellSize = boardSize / 9f
 
                     val col =
-                        (event.x / cellSize).toInt().coerceIn(0, 8)
+                        (event.x / cellSize)
+                            .toInt()
+                            .coerceIn(0, 8)
 
                     val row =
-                        (event.y / cellSize).toInt().coerceIn(0, 8)
+                        (event.y / cellSize)
+                            .toInt()
+                            .coerceIn(0, 8)
 
                     onCellSelected?.invoke(row * 9 + col)
                     performClick()
