@@ -1,9 +1,9 @@
 package com.example.sudoku.data
 
-import com.example.sudoku.domain.Difficulty
-import com.example.sudoku.domain.SudokuDifficultyEvaluator
-import com.example.sudoku.domain.SudokuGenerator
-import com.example.sudoku.domain.SudokuPuzzle
+import com.example.sudoku.domain.generation.SudokuDifficultyEvaluator
+import com.example.sudoku.domain.generation.SudokuGenerator
+import com.example.sudoku.domain.model.Difficulty
+import com.example.sudoku.domain.model.SudokuPuzzle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext

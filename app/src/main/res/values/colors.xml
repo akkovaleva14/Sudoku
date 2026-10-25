@@ -29,14 +29,8 @@
 
     <color name="board_hint_target">#FFE082</color>
     <color name="board_hint_evidence">#ADD8FF</color>
-    <color name="board_hint_assumed">#FFD39D</color>
-    <color name="board_hint_derived">#E8DCFF</color>
-    <color name="board_hint_contradiction">#FFBEBE</color>
     <color name="board_hint_border">#DA8B00</color>
 
     <color name="board_evidence_text">#0F467D</color>
-    <color name="board_assumed_text">#A65200</color>
-    <color name="board_derived_text">#7035AA</color>
-
 
 </resources>

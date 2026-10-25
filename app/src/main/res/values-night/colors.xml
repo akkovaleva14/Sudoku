@@ -27,13 +27,8 @@
 
     <color name="board_hint_target">#665321</color>
     <color name="board_hint_evidence">#244665</color>
-    <color name="board_hint_assumed">#664222</color>
-    <color name="board_hint_derived">#48345E</color>
-    <color name="board_hint_contradiction">#6D303B</color>
     <color name="board_hint_border">#FFD166</color>
 
     <color name="board_evidence_text">#B8DCFF</color>
-    <color name="board_assumed_text">#FFD09B</color>
-    <color name="board_derived_text">#DBC1FF</color>
 
 </resources>

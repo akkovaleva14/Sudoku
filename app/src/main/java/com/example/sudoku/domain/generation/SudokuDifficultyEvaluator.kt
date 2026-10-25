@@ -1,4 +1,7 @@
-package com.example.sudoku.domain
+package com.example.sudoku.domain.generation
+
+import com.example.sudoku.domain.model.Difficulty
+import com.example.sudoku.domain.game.SudokuRules
 
 class SudokuDifficultyEvaluator {
 

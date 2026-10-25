@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.main
 
 import android.content.Context
 import android.content.res.Configuration
@@ -11,6 +11,10 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.example.sudoku.R
 import com.example.sudoku.databinding.ActivityMainBinding
+import com.example.sudoku.presentation.shared.theme.AppTheme
+import com.example.sudoku.presentation.game.GameFragment
+import com.example.sudoku.presentation.results.ResultsFragment
+import com.example.sudoku.presentation.start.StartFragment
 
 class MainActivity : FragmentActivity() {
 

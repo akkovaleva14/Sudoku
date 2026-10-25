@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.start
 
 import android.app.AlertDialog
 import android.os.Bundle
@@ -13,8 +13,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.sudoku.R
 import com.example.sudoku.SudokuApplication
 import com.example.sudoku.databinding.FragmentStartBinding
-import com.example.sudoku.domain.Difficulty
-import com.example.sudoku.domain.MistakeMode
+import com.example.sudoku.domain.model.Difficulty
+import com.example.sudoku.domain.model.MistakeMode
+import com.example.sudoku.presentation.shared.theme.AppTheme
+import com.example.sudoku.presentation.shared.state.SudokuUiState
+import com.example.sudoku.presentation.shared.state.SudokuViewModel
+import com.example.sudoku.presentation.shared.state.SudokuViewModelFactory
+import com.example.sudoku.presentation.shared.formatting.difficultyName
+import com.example.sudoku.presentation.main.MainActivity
+import com.example.sudoku.presentation.shared.formatting.mistakeModeName
 import kotlinx.coroutines.launch
 
 class StartFragment : Fragment(R.layout.fragment_start) {

@@ -1,4 +1,8 @@
-package com.example.sudoku.domain
+package com.example.sudoku.domain.game
+
+import com.example.sudoku.domain.model.MistakeMode
+import com.example.sudoku.domain.model.MoveSnapshot
+import com.example.sudoku.domain.model.SudokuGame
 
 class GameEngine {
 

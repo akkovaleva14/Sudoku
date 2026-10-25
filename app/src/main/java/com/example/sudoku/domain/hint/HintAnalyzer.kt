@@ -1,53 +1,12 @@
-package com.example.sudoku.domain
+package com.example.sudoku.domain.hint
 
+import com.example.sudoku.domain.game.SudokuRules
+import com.example.sudoku.domain.model.SudokuGame
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
-// Сохранено для совместимости с SudokuBoardView.
-// Новый анализатор не создаёт пошаговых доказательств.
-data class ProofStep(
-    val explanation: String,
-    val values: List<Int>,
-    val highlightedCells: Set<Int> = emptySet(),
-    val evidenceCells: Set<Int> = emptySet(),
-    val assumedCells: Set<Int> = emptySet(),
-    val derivedCells: Set<Int> = emptySet(),
-    val contradictionCells: Set<Int> = emptySet()
-)
-
-data class LogicalHint(
-    val targetIndex: Int,
-    val digit: Int,
-    val explanation: String,
-    val highlightedCells: Set<Int>,
-    val evidenceCells: Set<Int> = emptySet(),
-    val excludedCells: Set<Int> = emptySet(),
-    val proofSteps: List<ProofStep> = emptyList()
-)
-
-sealed interface HintAnalysis {
-
-    data class Found(
-        val hint: LogicalHint
-    ) : HintAnalysis
-
-    /**
-     * Два числа для заметок.
-     * Одно из них совпадает с сохранённым решением.
-     * Правильное число отдельно не раскрывается.
-     */
-    data class Notes(
-        val targetIndex: Int,
-        val digits: Set<Int>,
-        val explanation: String
-    ) : HintAnalysis
-
-    data class Unavailable(
-        val message: String
-    ) : HintAnalysis
-}
 
 class HintAnalyzer(
     private val random: Random = Random.Default
@@ -122,7 +81,7 @@ class HintAnalyzer(
 
         if (game.isFinished) {
             return@withContext HintAnalysis.Unavailable(
-                "Судоку уже решено."
+                "Игра уже завершена."
             )
         }
 
@@ -323,8 +282,7 @@ class HintAnalyzer(
                 )
 
                 append(
-                    "В выделенной розовым " +
-                            "${move.unit.description} " +
+                    "В выделенной ${move.unit.description} " +
                             "этой цифры пока нет.\n\n"
                 )
 

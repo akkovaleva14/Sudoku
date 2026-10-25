@@ -1,8 +1,8 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.shared.formatting
 
 import android.content.Context
 import com.example.sudoku.R
-import com.example.sudoku.domain.MistakeMode
+import com.example.sudoku.domain.model.MistakeMode
 
 fun Context.mistakeModeName(
     mode: MistakeMode

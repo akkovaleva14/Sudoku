@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.game
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter

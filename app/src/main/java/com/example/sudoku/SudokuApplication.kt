@@ -3,10 +3,10 @@ package com.example.sudoku
 import android.app.Application
 import com.example.sudoku.data.PreferencesGameRepository
 import com.example.sudoku.data.RandomSudokuGenerator
-import com.example.sudoku.domain.GameEngine
-import com.example.sudoku.domain.GameRepository
-import com.example.sudoku.domain.GeneratePuzzleUseCase
-import com.example.sudoku.domain.ResultsRepository
+import com.example.sudoku.domain.game.GameEngine
+import com.example.sudoku.domain.repository.GameRepository
+import com.example.sudoku.domain.generation.GeneratePuzzleUseCase
+import com.example.sudoku.domain.repository.ResultsRepository
 
 class SudokuApplication : Application() {
 

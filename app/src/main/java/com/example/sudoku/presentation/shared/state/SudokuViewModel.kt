@@ -1,19 +1,19 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.shared.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sudoku.R
-import com.example.sudoku.domain.Difficulty
-import com.example.sudoku.domain.GameEngine
-import com.example.sudoku.domain.GameRepository
-import com.example.sudoku.domain.GameResult
-import com.example.sudoku.domain.GeneratePuzzleUseCase
-import com.example.sudoku.domain.HintAnalysis
-import com.example.sudoku.domain.HintAnalyzer
-import com.example.sudoku.domain.LogicalHint
-import com.example.sudoku.domain.MistakeMode
-import com.example.sudoku.domain.MoveSnapshot
-import com.example.sudoku.domain.SudokuGame
+import com.example.sudoku.domain.model.Difficulty
+import com.example.sudoku.domain.game.GameEngine
+import com.example.sudoku.domain.repository.GameRepository
+import com.example.sudoku.domain.model.GameResult
+import com.example.sudoku.domain.generation.GeneratePuzzleUseCase
+import com.example.sudoku.domain.hint.HintAnalysis
+import com.example.sudoku.domain.hint.HintAnalyzer
+import com.example.sudoku.domain.hint.LogicalHint
+import com.example.sudoku.domain.model.MistakeMode
+import com.example.sudoku.domain.model.MoveSnapshot
+import com.example.sudoku.domain.model.SudokuGame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -23,17 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
-
-data class SudokuUiState(
-    val game: SudokuGame? = null,
-    val isBusy: Boolean = true,
-    val error: String? = null,
-    val hint: LogicalHint? = null,
-    val hintMessage: String? = null,
-    val isHintBusy: Boolean = false,
-    val isPaused: Boolean = false,
-    val openGameRequested: Boolean = false
-)
 
 class SudokuViewModel(
     private val generatePuzzle: GeneratePuzzleUseCase,

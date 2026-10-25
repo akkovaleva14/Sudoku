@@ -1,4 +1,7 @@
-package com.example.sudoku.domain
+package com.example.sudoku.domain.game
+
+import com.example.sudoku.domain.model.MistakeMode
+import com.example.sudoku.domain.model.SudokuGame
 
 object SudokuRules {
 
@@ -8,12 +11,8 @@ object SudokuRules {
         val row2 = second / 9
         val col2 = second % 9
 
-        return row1 == row2 ||
-                col1 == col2 ||
-                (
-                        row1 / 3 == row2 / 3 &&
-                                col1 / 3 == col2 / 3
-                        )
+        return row1 == row2 || col1 == col2 ||
+                (row1 / 3 == row2 / 3 && col1 / 3 == col2 / 3)
     }
 
     fun candidates(

@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.shared.theme
 
 import android.content.Context
 import android.content.res.Configuration

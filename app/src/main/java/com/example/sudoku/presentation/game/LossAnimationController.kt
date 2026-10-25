@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.game
 
 import android.animation.ValueAnimator
 import android.graphics.Typeface
@@ -9,8 +9,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.example.sudoku.R
 import com.example.sudoku.databinding.FragmentGameBinding
-import com.example.sudoku.domain.MistakeMode
-import com.example.sudoku.domain.SudokuGame
+import com.example.sudoku.domain.model.MistakeMode
+import com.example.sudoku.domain.model.SudokuGame
+import com.example.sudoku.presentation.shared.state.SudokuUiState
 import kotlin.math.PI
 import kotlin.math.sin
 

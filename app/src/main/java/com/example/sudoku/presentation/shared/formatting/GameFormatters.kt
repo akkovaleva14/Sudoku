@@ -1,8 +1,8 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.shared.formatting
 
 import android.content.Context
 import com.example.sudoku.R
-import com.example.sudoku.domain.Difficulty
+import com.example.sudoku.domain.model.Difficulty
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale

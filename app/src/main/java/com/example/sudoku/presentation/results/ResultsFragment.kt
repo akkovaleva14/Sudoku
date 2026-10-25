@@ -1,4 +1,4 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.results
 
 import android.app.AlertDialog
 import android.graphics.Canvas
@@ -21,7 +21,11 @@ import com.example.sudoku.R
 import com.example.sudoku.SudokuApplication
 import com.example.sudoku.databinding.FragmentResultsBinding
 import com.example.sudoku.databinding.ItemResultBinding
-import com.example.sudoku.domain.GameResult
+import com.example.sudoku.domain.model.GameResult
+import com.example.sudoku.presentation.shared.formatting.difficultyName
+import com.example.sudoku.presentation.shared.formatting.formatCompletionDate
+import com.example.sudoku.presentation.shared.formatting.formatGameTime
+import com.example.sudoku.presentation.shared.formatting.mistakeModeName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 

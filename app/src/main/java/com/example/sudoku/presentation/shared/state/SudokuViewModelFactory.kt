@@ -1,10 +1,10 @@
-package com.example.sudoku.presentation
+package com.example.sudoku.presentation.shared.state
 
 import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.sudoku.SudokuApplication
-import com.example.sudoku.domain.HintAnalyzer
+import com.example.sudoku.domain.hint.HintAnalyzer
 
 class SudokuViewModelFactory(
     private val application: SudokuApplication
