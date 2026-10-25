@@ -41,14 +41,15 @@
             android:visibility="gone" />
 
         <TextView
+            android:id="@+id/difficultyLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:labelFor="@id/difficultySpinner"
             android:text="@string/select_difficulty"
             android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <Spinner
             android:id="@+id/difficultySpinner"
@@ -56,14 +57,15 @@
             android:layout_height="@dimen/digit_height" />
 
         <TextView
+            android:id="@+id/mistakeModeLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_normal"
             android:labelFor="@id/mistakeModeSpinner"
             android:text="@string/select_mistake_mode"
             android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <Spinner
             android:id="@+id/mistakeModeSpinner"
@@ -117,6 +119,17 @@
             android:minHeight="@dimen/action_height"
             android:text="@string/previous_results"
             android:textAllCaps="false" />
+
+        <Switch
+            android:id="@+id/darkThemeSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:minHeight="@dimen/action_height"
+            android:saveEnabled="false"
+            android:text="@string/dark_theme"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
 
     </LinearLayout>
 

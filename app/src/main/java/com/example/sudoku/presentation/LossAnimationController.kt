@@ -1,7 +1,6 @@
 package com.example.sudoku.presentation
 
 import android.animation.ValueAnimator
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
 import android.provider.Settings
@@ -31,6 +30,11 @@ class LossAnimationController(
         R.color.text_secondary
     )
 
+    private val restartLossColor = ContextCompat.getColor(
+        context,
+        R.color.text_primary
+    )
+
     private val originalRestartColors =
         ui.restartButton.textColors
 
@@ -55,13 +59,15 @@ class LossAnimationController(
                     state.error == null &&
                     game?.mistakeMode == MistakeMode.TWO_MISTAKES
 
-        ui.mistakeCounterText.isVisible = showCounter
+        ui.mistakeCounterText.isVisible =
+            showCounter
 
         if (showCounter && game != null) {
-            ui.mistakeCounterText.text = context.getString(
-                R.string.mistakes_progress,
-                game.mistakeCount
-            )
+            ui.mistakeCounterText.text =
+                context.getString(
+                    R.string.mistakes_progress,
+                    game.mistakeCount
+                )
         }
 
         if (
@@ -125,7 +131,8 @@ class LossAnimationController(
                 return@addUpdateListener
             }
 
-            val progress = it.animatedValue as Float
+            val progress =
+                it.animatedValue as Float
 
             applyFrame(progress, game)
 
@@ -145,7 +152,7 @@ class LossAnimationController(
         progress: Float,
         game: SudokuGame
     ) {
-        // 0–1080 мс: мягкое покачивание и подсветка клетки.
+        // 0–1080 мс: покачивание и подсветка клетки.
         val shakeProgress =
             (progress / 0.45f).coerceIn(0f, 1f)
 
@@ -181,7 +188,7 @@ class LossAnimationController(
             dim = dimProgress * FINAL_DIM
         )
 
-        // 240–1200 мс: пульс счётчика ограниченного режима.
+        // 240–1200 мс: пульсация счётчика ошибок.
         val pulseProgress =
             ((progress - 0.10f) / 0.40f)
                 .coerceIn(0f, 1f)
@@ -192,7 +199,9 @@ class LossAnimationController(
                 .coerceAtLeast(0f)
 
         val scale =
-            if (game.mistakeMode == MistakeMode.TWO_MISTAKES) {
+            if (
+                game.mistakeMode == MistakeMode.TWO_MISTAKES
+            ) {
                 1f + pulse * 0.18f
             } else {
                 1f
@@ -202,13 +211,15 @@ class LossAnimationController(
         ui.mistakeCounterText.scaleY = scale
         ui.mistakeCounterText.setTextColor(errorColor)
 
-        // 1560–2400 мс: плавно появляется сообщение.
-        // Кнопка рестарта — чёрная и жирная с начала эффекта.
+        // 1560–2400 мс: появляется сообщение о проигрыше.
+        // Кнопка рестарта выделяется с начала эффекта.
         val revealProgress =
             ((progress - 0.65f) / 0.35f)
                 .coerceIn(0f, 1f)
 
-        ui.selectionText.alpha = revealProgress
+        ui.selectionText.alpha =
+            revealProgress
+
         ui.selectionText.translationY =
             (1f - revealProgress) *
                     6f *
@@ -241,7 +252,12 @@ class LossAnimationController(
     }
 
     private fun applyRestartLossStyle() {
-        ui.restartButton.setTextColor(Color.BLACK)
+        // Тёмный текст в светлой теме,
+        // светлый текст в тёмной.
+        ui.restartButton.setTextColor(
+            restartLossColor
+        )
+
         ui.restartButton.setTypeface(
             originalRestartTypeface,
             Typeface.BOLD
@@ -253,17 +269,22 @@ class LossAnimationController(
 
         ui.mistakeCounterText.scaleX = 1f
         ui.mistakeCounterText.scaleY = 1f
-        ui.mistakeCounterText.setTextColor(secondaryColor)
+        ui.mistakeCounterText.setTextColor(
+            secondaryColor
+        )
 
         ui.selectionText.alpha = 1f
         ui.selectionText.translationY = 0f
 
-        // Цвет selectionText для обычной игры
-        // выставляется в GameFragment.renderExplanation().
+        // Обычный цвет selectionText устанавливается
+        // в GameFragment.renderExplanation().
 
-        // Возвращаем исходные цвет и шрифт кнопки.
-        ui.restartButton.setTextColor(originalRestartColors)
-        ui.restartButton.typeface = originalRestartTypeface
+        ui.restartButton.setTextColor(
+            originalRestartColors
+        )
+
+        ui.restartButton.typeface =
+            originalRestartTypeface
     }
 
     private fun findErrorIndex(game: SudokuGame): Int {
@@ -274,7 +295,8 @@ class LossAnimationController(
             selected in 0..80 &&
             game.puzzle.givens[selected] == 0 &&
             game.values[selected] != 0 &&
-            game.values[selected] != game.puzzle.solution[selected]
+            game.values[selected] !=
+            game.puzzle.solution[selected]
         ) {
             selected
         } else {
@@ -313,7 +335,9 @@ class LossAnimationController(
     }
 
     private fun animationsEnabled(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ) {
             return ValueAnimator.areAnimatorsEnabled()
         }
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="screen_background">#121820</color>
+    <color name="surface_background">#1C2531</color>
+
+    <color name="text_primary">#E5ECF5</color>
+    <color name="text_secondary">#A8B6CA</color>
+    <color name="accent">#8AB4FF</color>
+
+    <color name="explanation_background">#20382B</color>
+    <color name="explanation_text">#D0EBD7</color>
+
+    <color name="board_background">#1C2531</color>
+    <color name="board_grid">#8190A5</color>
+    <color name="board_notes">#BAC7D8</color>
+
+    <color name="board_selected">#355C46</color>
+    <color name="board_matching">#294936</color>
+    <color name="board_related">#22382C</color>
+    <color name="board_excluded">#294936</color>
+    <color name="board_exclusion_mark">#97CBA4</color>
+
+    <color name="digit_completed">#9BD5A6</color>
+    <color name="loss_error">#FF8996</color>
+    <color name="loss_cell_background">#74333F</color>
+
+    <color name="board_hint_target">#665321</color>
+    <color name="board_hint_evidence">#244665</color>
+    <color name="board_hint_assumed">#664222</color>
+    <color name="board_hint_derived">#48345E</color>
+    <color name="board_hint_contradiction">#6D303B</color>
+    <color name="board_hint_border">#FFD166</color>
+
+    <color name="board_evidence_text">#B8DCFF</color>
+    <color name="board_assumed_text">#FFD09B</color>
+    <color name="board_derived_text">#DBC1FF</color>
+
+</resources>

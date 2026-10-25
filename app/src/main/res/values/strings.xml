@@ -90,7 +90,7 @@
     <string name="mistake_mode_none">Нельзя ошибаться</string>
     <string name="mistake_mode_two">Можно ошибиться 2 раза</string>
     <string name="mistake_mode_unlimited">Можно ошибаться бесконечно</string>
-    <string name="mistake_mode_locked">Режим закреплён за текущей попыткой. Изменить его можно при рестарте или после завершения игры.</string>
+    <string name="mistake_mode_locked">Во время текущей игры сложность и режим ошибок зафиксированы. Новая игра будет создана с теми же параметрами. Чтобы выбрать другие, завершите текущую игру.</string>
 
     <string name="game_mistake_mode">Режим: %1$s</string>
     <string name="restart_select_mode">Режим ошибок для новой попытки</string>
@@ -116,5 +116,7 @@
     <string name="finish_current_game_action">Завершить</string>
     <string name="confirm_finish_current_game">Завершить текущую игру? Прогресс будет удалён. Эта попытка не будет добавлена в историю результатов.</string>
     <string name="error_finish_current_game">Не удалось завершить текущую игру. Попробуйте ещё раз.</string>
+    <string name="results_swipe_hint">Смахните результат влево, чтобы удалить его.</string>
+    <string name="dark_theme">Тёмная тема</string>
 
 </resources>

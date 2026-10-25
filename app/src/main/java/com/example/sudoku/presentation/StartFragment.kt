@@ -22,6 +22,7 @@ class StartFragment : Fragment(R.layout.fragment_start) {
     private var binding: FragmentStartBinding? = null
 
     private var finishGameDialog: AlertDialog? = null
+    private var newGameDialog: AlertDialog? = null
 
     private val viewModel: SudokuViewModel by activityViewModels {
         SudokuViewModelFactory(
@@ -37,6 +38,8 @@ class StartFragment : Fragment(R.layout.fragment_start) {
 
         val ui = FragmentStartBinding.bind(view)
         binding = ui
+
+        configureThemeSwitch(ui)
 
         ui.difficultySpinner.adapter = ArrayAdapter(
             requireContext(),
@@ -62,16 +65,138 @@ class StartFragment : Fragment(R.layout.fragment_start) {
             )
         }
 
+        val initialGame = viewModel.state.value.game
+
+        if (initialGame != null && !initialGame.isFinished) {
+            ui.difficultySpinner.setSelection(
+                Difficulty.entries.indexOf(
+                    initialGame.puzzle.difficulty
+                )
+            )
+        }
+
         val initialMode =
-            viewModel.state.value.game?.mistakeMode
-                ?: MistakeMode.UNLIMITED
+            initialGame?.mistakeMode ?: MistakeMode.UNLIMITED
 
         ui.mistakeModeSpinner.setSelection(
             MistakeMode.entries.indexOf(initialMode)
         )
 
+        // Сразу выставляем состояние настроек,
+        // не дожидаясь запуска наблюдения.
+        renderSettings(
+            ui = ui,
+            state = viewModel.state.value
+        )
+
         configureActions(ui)
         observeState(ui)
+    }
+
+    private fun configureThemeSwitch(
+        ui: FragmentStartBinding
+    ) {
+        // Сначала устанавливаем состояние,
+        // затем подключаем слушатель.
+        ui.darkThemeSwitch.isChecked =
+            AppTheme.isDarkEnabled(requireContext())
+
+        ui.darkThemeSwitch.isEnabled =
+            !viewModel.state.value.isBusy
+
+        ui.darkThemeSwitch.setOnCheckedChangeListener { _, enabled ->
+            if (
+                binding !== ui ||
+                viewModel.state.value.isBusy
+            ) {
+                return@setOnCheckedChangeListener
+            }
+
+            (requireActivity() as MainActivity)
+                .setDarkTheme(enabled)
+        }
+    }
+
+    private fun renderSettings(
+        ui: FragmentStartBinding,
+        state: SudokuUiState
+    ) {
+        val game = state.game
+
+        val settingsLocked =
+            game != null && !game.isFinished
+
+        val settingsEnabled =
+            !state.isBusy && !settingsLocked
+
+        ui.difficultySpinner.isEnabled =
+            settingsEnabled
+
+        ui.mistakeModeSpinner.isEnabled =
+            settingsEnabled
+
+        ui.difficultyLabel.isEnabled =
+            settingsEnabled
+
+        ui.mistakeModeLabel.isEnabled =
+            settingsEnabled
+
+        // Недоступные настройки заметно приглушены
+        // как в светлой, так и в тёмной теме.
+        val settingsAlpha =
+            if (settingsEnabled) {
+                1f
+            } else {
+                0.45f
+            }
+
+        ui.difficultySpinner.alpha =
+            settingsAlpha
+
+        ui.mistakeModeSpinner.alpha =
+            settingsAlpha
+
+        ui.difficultyLabel.alpha =
+            settingsAlpha
+
+        ui.mistakeModeLabel.alpha =
+            settingsAlpha
+
+        // Пояснение остаётся обычной яркости.
+        ui.mistakeModeNotice.isVisible =
+            settingsLocked
+
+        // В заблокированных списках показываем
+        // параметры текущей попытки.
+        if (settingsLocked && game != null) {
+            val difficultyPosition =
+                Difficulty.entries.indexOf(
+                    game.puzzle.difficulty
+                )
+
+            if (
+                ui.difficultySpinner.selectedItemPosition !=
+                difficultyPosition
+            ) {
+                ui.difficultySpinner.setSelection(
+                    difficultyPosition
+                )
+            }
+
+            val modePosition =
+                MistakeMode.entries.indexOf(
+                    game.mistakeMode
+                )
+
+            if (
+                ui.mistakeModeSpinner.selectedItemPosition !=
+                modePosition
+            ) {
+                ui.mistakeModeSpinner.setSelection(
+                    modePosition
+                )
+            }
+        }
     }
 
     private fun configureActions(
@@ -80,23 +205,31 @@ class StartFragment : Fragment(R.layout.fragment_start) {
         ui.startGameButton.setOnClickListener {
             val current = viewModel.state.value
 
-            if (current.isBusy) {
+            if (
+                current.isBusy ||
+                newGameDialog?.isShowing == true
+            ) {
                 return@setOnClickListener
             }
 
-            val difficulty = Difficulty.entries[
-                ui.difficultySpinner.selectedItemPosition
-            ]
-
             val currentGame = current.game
 
-            // Пока попытка активна, новая головоломка
-            // использует зафиксированный режим ошибок.
+            val hasActiveGame =
+                currentGame != null && !currentGame.isFinished
+
+            // При активной попытке сохраняем её параметры
+            // при создании новой головоломки.
+            val difficulty =
+                if (hasActiveGame && currentGame != null) {
+                    currentGame.puzzle.difficulty
+                } else {
+                    Difficulty.entries[
+                        ui.difficultySpinner.selectedItemPosition
+                    ]
+                }
+
             val mode =
-                if (
-                    currentGame != null &&
-                    !currentGame.isFinished
-                ) {
+                if (hasActiveGame && currentGame != null) {
                     currentGame.mistakeMode
                 } else {
                     MistakeMode.entries[
@@ -104,13 +237,10 @@ class StartFragment : Fragment(R.layout.fragment_start) {
                     ]
                 }
 
-            if (
-                currentGame != null &&
-                !currentGame.isFinished
-            ) {
+            if (hasActiveGame && currentGame != null) {
                 val attemptId = currentGame.gameId
 
-                AlertDialog.Builder(requireContext())
+                val dialog = AlertDialog.Builder(requireContext())
                     .setTitle(R.string.new_game)
                     .setMessage(R.string.confirm_new_game)
                     .setNegativeButton(
@@ -130,15 +260,25 @@ class StartFragment : Fragment(R.layout.fragment_start) {
                         }
 
                         viewModel.newGame(
-                            difficulty,
-                            mode
+                            difficulty = difficulty,
+                            mistakeMode = mode
                         )
                     }
-                    .show()
+                    .create()
+
+                newGameDialog = dialog
+
+                dialog.setOnDismissListener {
+                    if (newGameDialog === dialog) {
+                        newGameDialog = null
+                    }
+                }
+
+                dialog.show()
             } else {
                 viewModel.newGame(
-                    difficulty,
-                    mode
+                    difficulty = difficulty,
+                    mistakeMode = mode
                 )
             }
         }
@@ -221,39 +361,51 @@ class StartFragment : Fragment(R.layout.fragment_start) {
             viewLifecycleOwner.repeatOnLifecycle(
                 Lifecycle.State.RESUMED
             ) {
+                var openingGame = false
+
                 viewModel.state.collect { state ->
+                    if (binding !== ui || openingGame) {
+                        return@collect
+                    }
+
+                    // Обрабатываем переход ДО обновления меню.
+                    // Пока транзакция выполняется, сохраняем
+                    // предыдущий вид стартового экрана.
+                    if (
+                        state.openGameRequested &&
+                        !state.isBusy
+                    ) {
+                        val opened =
+                            (requireActivity() as MainActivity)
+                                .openGame()
+
+                        if (opened) {
+                            // consumeOpenGameRequest() тоже меняет
+                            // состояние. Блокируем последующую
+                            // отрисовку до завершения перехода.
+                            openingGame = true
+
+                            viewModel.consumeOpenGameRequest()
+                        }
+
+                        return@collect
+                    }
+
                     val game = state.game
 
-                    val modeLocked =
-                        game?.isFinished == false
+                    val settingsLocked =
+                        game != null && !game.isFinished
 
                     ui.startProgress.isVisible =
                         state.isBusy
 
-                    ui.difficultySpinner.isEnabled =
+                    ui.darkThemeSwitch.isEnabled =
                         !state.isBusy
 
-                    ui.mistakeModeSpinner.isEnabled =
-                        !state.isBusy && !modeLocked
-
-                    ui.mistakeModeNotice.isVisible =
-                        modeLocked
-
-                    if (modeLocked && game != null) {
-                        val position =
-                            MistakeMode.entries.indexOf(
-                                game.mistakeMode
-                            )
-
-                        if (
-                            ui.mistakeModeSpinner
-                                .selectedItemPosition != position
-                        ) {
-                            ui.mistakeModeSpinner.setSelection(
-                                position
-                            )
-                        }
-                    }
+                    renderSettings(
+                        ui = ui,
+                        state = state
+                    )
 
                     ui.startGameButton.isEnabled =
                         !state.isBusy
@@ -268,18 +420,14 @@ class StartFragment : Fragment(R.layout.fragment_start) {
                         !state.isBusy && game != null
 
                     ui.continueGameButton.setText(
-                        if (game?.isFinished == true) {
-                            R.string.return_to_game
-                        } else {
-                            R.string.continue_game
-                        }
+                        R.string.return_to_game
                     )
 
                     ui.finishCurrentGameButton.isVisible =
-                        modeLocked
+                        settingsLocked
 
                     ui.finishCurrentGameButton.isEnabled =
-                        !state.isBusy && modeLocked
+                        !state.isBusy && settingsLocked
 
                     ui.startStatusText.text = when {
                         state.isBusy ->
@@ -291,29 +439,22 @@ class StartFragment : Fragment(R.layout.fragment_start) {
                         else ->
                             getString(R.string.start_description)
                     }
-
-                    if (
-                        state.openGameRequested &&
-                        !state.isBusy
-                    ) {
-                        val opened =
-                            (requireActivity() as MainActivity)
-                                .openGame()
-
-                        if (opened) {
-                            viewModel.consumeOpenGameRequest()
-                        }
-                    }
                 }
             }
         }
     }
 
     override fun onDestroyView() {
+        binding?.darkThemeSwitch
+            ?.setOnCheckedChangeListener(null)
+
+        binding = null
+
         finishGameDialog?.dismiss()
         finishGameDialog = null
 
-        binding = null
+        newGameDialog?.dismiss()
+        newGameDialog = null
 
         super.onDestroyView()
     }

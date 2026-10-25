@@ -28,6 +28,14 @@
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:text="@string/results_swipe_hint"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
     <ProgressBar
         android:id="@+id/resultsProgress"
         android:layout_width="wrap_content"
@@ -53,13 +61,13 @@
         android:text="@string/clear_results"
         android:textAllCaps="false" />
 
-    <ListView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/resultsList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/spacing_normal"
         android:layout_weight="1"
-        android:divider="@color/screen_background"
-        android:dividerHeight="@dimen/spacing_normal" />
+        android:clipToPadding="false"
+        android:scrollbars="vertical" />
 
 </LinearLayout>

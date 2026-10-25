@@ -23,35 +23,71 @@ class SudokuBoardView @JvmOverloads constructor(
 
     private val density = resources.displayMetrics.density
 
-    private val selectedColor = ContextCompat.getColor(
-        context,
-        R.color.board_selected
-    )
+    // Палитра загружается при создании View.
+    // При переключении темы Activity пересоздаётся,
+    // поэтому цвета обновляются вместе с разметкой.
+    private val backgroundColor =
+        themedColor(R.color.board_background)
 
-    private val matchingColor = ContextCompat.getColor(
-        context,
-        R.color.board_matching
-    )
+    private val selectedColor =
+        themedColor(R.color.board_selected)
 
-    private val relatedColor = ContextCompat.getColor(
-        context,
-        R.color.board_related
-    )
+    private val matchingColor =
+        themedColor(R.color.board_matching)
 
-    private val excludedColor = ContextCompat.getColor(
-        context,
-        R.color.board_excluded
-    )
+    private val relatedColor =
+        themedColor(R.color.board_related)
 
-    private val exclusionMarkColor = ContextCompat.getColor(
-        context,
-        R.color.board_exclusion_mark
-    )
+    private val excludedColor =
+        themedColor(R.color.board_excluded)
 
-    private val lossCellColor = ContextCompat.getColor(
-        context,
-        R.color.loss_cell_background
-    )
+    private val exclusionMarkColor =
+        themedColor(R.color.board_exclusion_mark)
+
+    private val lossCellColor =
+        themedColor(R.color.loss_cell_background)
+
+    private val errorColor =
+        themedColor(R.color.loss_error)
+
+    private val givenDigitColor =
+        themedColor(R.color.text_primary)
+
+    private val enteredDigitColor =
+        themedColor(R.color.accent)
+
+    private val gridColor =
+        themedColor(R.color.board_grid)
+
+    private val notesColor =
+        themedColor(R.color.board_notes)
+
+    private val hintTargetColor =
+        themedColor(R.color.board_hint_target)
+
+    private val hintEvidenceColor =
+        themedColor(R.color.board_hint_evidence)
+
+    private val hintAssumedColor =
+        themedColor(R.color.board_hint_assumed)
+
+    private val hintDerivedColor =
+        themedColor(R.color.board_hint_derived)
+
+    private val hintContradictionColor =
+        themedColor(R.color.board_hint_contradiction)
+
+    private val hintBorderColor =
+        themedColor(R.color.board_hint_border)
+
+    private val evidenceTextColor =
+        themedColor(R.color.board_evidence_text)
+
+    private val assumedTextColor =
+        themedColor(R.color.board_assumed_text)
+
+    private val derivedTextColor =
+        themedColor(R.color.board_derived_text)
 
     private var givens: List<Int> = List(81) { 0 }
     private var values: List<Int> = List(81) { 0 }
@@ -75,6 +111,13 @@ class SudokuBoardView @JvmOverloads constructor(
     init {
         isClickable = true
         isFocusable = true
+    }
+
+    private fun themedColor(resourceId: Int): Int {
+        return ContextCompat.getColor(
+            context,
+            resourceId
+        )
     }
 
     fun setState(
@@ -208,7 +251,8 @@ class SudokuBoardView @JvmOverloads constructor(
         val activeHint = hint
         val activeStep = proofStep
 
-        val displayedValues = activeStep?.values ?: values
+        val displayedValues =
+            activeStep?.values ?: values
 
         val selectedValue =
             if (selected in 0..80) {
@@ -229,35 +273,35 @@ class SudokuBoardView @JvmOverloads constructor(
                 activeStep != null -> {
                     when {
                         index in activeStep.contradictionCells ->
-                            Color.rgb(255, 190, 190)
+                            hintContradictionColor
 
                         index == activeHint?.targetIndex ->
-                            Color.rgb(255, 224, 130)
+                            hintTargetColor
 
                         index in activeStep.assumedCells ->
-                            Color.rgb(255, 211, 157)
+                            hintAssumedColor
 
                         index in activeStep.evidenceCells ->
-                            Color.rgb(173, 216, 255)
+                            hintEvidenceColor
 
                         index in activeStep.highlightedCells ->
                             relatedColor
 
                         index in activeStep.derivedCells ->
-                            Color.rgb(232, 220, 255)
+                            hintDerivedColor
 
                         else ->
-                            Color.WHITE
+                            backgroundColor
                     }
                 }
 
                 activeHint != null -> {
                     when {
                         index == activeHint.targetIndex ->
-                            Color.rgb(255, 224, 130)
+                            hintTargetColor
 
                         index in activeHint.evidenceCells ->
-                            Color.rgb(173, 216, 255)
+                            hintEvidenceColor
 
                         index in activeHint.excludedCells ->
                             excludedColor
@@ -266,7 +310,7 @@ class SudokuBoardView @JvmOverloads constructor(
                             relatedColor
 
                         else ->
-                            Color.WHITE
+                            backgroundColor
                     }
                 }
 
@@ -284,7 +328,7 @@ class SudokuBoardView @JvmOverloads constructor(
                             relatedColor
 
                         else ->
-                            Color.WHITE
+                            backgroundColor
                     }
                 }
             }
@@ -405,29 +449,30 @@ class SudokuBoardView @JvmOverloads constructor(
 
             paint.color = when {
                 activeStep == null && index in errorCells ->
-                    Color.rgb(205, 48, 63)
+                    errorColor
 
                 isAssumed ->
-                    Color.rgb(166, 82, 0)
+                    assumedTextColor
 
                 isDerived ->
-                    Color.rgb(112, 53, 170)
+                    derivedTextColor
 
                 isEvidence ->
-                    Color.rgb(15, 70, 125)
+                    evidenceTextColor
 
                 givens[index] != 0 ->
-                    Color.rgb(30, 41, 59)
+                    givenDigitColor
 
                 else ->
-                    Color.rgb(35, 98, 190)
+                    enteredDigitColor
             }
 
             val centerX = (col + 0.5f) * cellSize
             val centerY = (row + 0.5f) * cellSize
 
             val baseline =
-                centerY - (paint.ascent() + paint.descent()) / 2f
+                centerY -
+                        (paint.ascent() + paint.descent()) / 2f
 
             if (
                 index == lossCellIndex &&
@@ -471,7 +516,7 @@ class SudokuBoardView @JvmOverloads constructor(
         paint.style = Paint.Style.FILL
         paint.alpha = 255
         paint.isFakeBoldText = false
-        paint.color = Color.rgb(62, 75, 96)
+        paint.color = gridColor
 
         for (line in 0..9) {
             paint.strokeWidth =
@@ -516,7 +561,7 @@ class SudokuBoardView @JvmOverloads constructor(
 
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2f * density
-            paint.color = Color.rgb(218, 139, 0)
+            paint.color = hintBorderColor
             paint.alpha = 255
 
             val inset = paint.strokeWidth / 2f
@@ -532,8 +577,7 @@ class SudokuBoardView @JvmOverloads constructor(
             paint.style = Paint.Style.FILL
         }
 
-        // Приглушение после проигрыша.
-        // Даже в конечном состоянии цифры читаемы.
+        // Затемняющий слой остаётся чёрным в обеих темах.
         if (lossDim > 0f) {
             paint.style = Paint.Style.FILL
             paint.color = Color.BLACK
@@ -594,7 +638,7 @@ class SudokuBoardView @JvmOverloads constructor(
     ) {
         paint.style = Paint.Style.FILL
         paint.alpha = 255
-        paint.color = Color.rgb(104, 117, 138)
+        paint.color = notesColor
         paint.textSize = cellSize * 0.23f
         paint.textAlign = Paint.Align.CENTER
         paint.isFakeBoldText = false
@@ -610,13 +654,16 @@ class SudokuBoardView @JvmOverloads constructor(
             val smallCol = (digit - 1) % 3
 
             val centerX =
-                col * cellSize + (smallCol + 0.5f) * smallCell
+                col * cellSize +
+                        (smallCol + 0.5f) * smallCell
 
             val centerY =
-                row * cellSize + (smallRow + 0.5f) * smallCell
+                row * cellSize +
+                        (smallRow + 0.5f) * smallCell
 
             val baseline =
-                centerY - (paint.ascent() + paint.descent()) / 2f
+                centerY -
+                        (paint.ascent() + paint.descent()) / 2f
 
             canvas.drawText(
                 digit.toString(),
@@ -635,7 +682,8 @@ class SudokuBoardView @JvmOverloads constructor(
                 return true
 
             MotionEvent.ACTION_UP -> {
-                val boardSize = min(width, height).toFloat()
+                val boardSize =
+                    min(width, height).toFloat()
 
                 if (
                     boardSize > 0f &&
@@ -656,7 +704,10 @@ class SudokuBoardView @JvmOverloads constructor(
                             .toInt()
                             .coerceIn(0, 8)
 
-                    onCellSelected?.invoke(row * 9 + col)
+                    onCellSelected?.invoke(
+                        row * 9 + col
+                    )
+
                     performClick()
                 }
 

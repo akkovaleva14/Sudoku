@@ -1,5 +1,7 @@
 package com.example.sudoku.presentation
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -12,7 +14,15 @@ import com.example.sudoku.databinding.ActivityMainBinding
 
 class MainActivity : FragmentActivity() {
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(
+            AppTheme.wrapContext(newBase)
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_Sudoku)
+
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -31,6 +41,24 @@ class MainActivity : FragmentActivity() {
                 )
                 .commit()
         }
+    }
+
+    fun setDarkTheme(enabled: Boolean) {
+        if (AppTheme.isDarkEnabled(this) == enabled) {
+            return
+        }
+
+        if (
+            isFinishing ||
+            isDestroyed ||
+            supportFragmentManager.isStateSaved
+        ) {
+            return
+        }
+
+        AppTheme.setDarkEnabled(this, enabled)
+
+        recreate()
     }
 
     private fun configureInsets(binding: ActivityMainBinding) {
@@ -52,9 +80,15 @@ class MainActivity : FragmentActivity() {
             insets
         }
 
+        val isDark =
+            (
+                    resources.configuration.uiMode and
+                            Configuration.UI_MODE_NIGHT_MASK
+                    ) == Configuration.UI_MODE_NIGHT_YES
+
         WindowCompat.getInsetsController(window, root).apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = !isDark
+            isAppearanceLightNavigationBars = !isDark
         }
 
         ViewCompat.requestApplyInsets(root)
